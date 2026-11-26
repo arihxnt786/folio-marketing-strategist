@@ -1,3 +1,4 @@
-Enabled by default: device AI, public research, D1 workspace, manual approval and publishing receipts, imported CSV analytics.
-Optional: Gemini after key verification; LinkedIn public member text posts after app registration and brand-specific OAuth.
-Manual only: Instagram, Facebook Pages, YouTube, X, email and web. Direct account analytics are not connected.
+Research: keyless public sources; optional Tavily.
+AI: configurable Gemini, OpenAI, Groq, OpenRouter and operator-hosted compatible inference.
+Publishing: approval, file export and user-recorded publication links only.
+Analytics: uploaded measurements only. See docs/QA-2.md for verification.

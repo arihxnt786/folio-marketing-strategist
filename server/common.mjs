@@ -32,7 +32,7 @@ async function payload(request) {
 }
 const platforms=['Instagram','Facebook','LinkedIn','YouTube','X','Email','Web'];
 const formats={'Instagram caption':'Instagram','Instagram Reel script':'Instagram','Instagram carousel':'Instagram','Facebook post':'Facebook','LinkedIn post':'LinkedIn','YouTube title and description':'YouTube','YouTube Shorts script':'YouTube','X post':'X','X thread':'X','Promotional announcement':'Web','Product launch campaign':'Web','Educational content':'Web','Brand storytelling':'Web','Email marketing copy':'Email','Advertisement copy':'Web','Landing-page copy':'Web'};
-const metricNames=['reach','impressions','engagement','likes','comments','shares','clicks','conversions','audience_growth'];
+const metricNames=['reach','impressions','engagement','likes','comments','shares','clicks','conversions','audience_growth','saves','leads','revenue','spend'];
 const brandFields=['name','website','industry','category','products','usp','audience','geography','competitors','voice','objectives','restrictions','guidelines'];
 function profile(input){
  const p={};for(const k of brandFields)p[k]=str(input[k],k==='name'?100:2500,k==='name');

@@ -24,19 +24,15 @@ async function engine(progress,signal){
  })().catch(e=>{loading=null;runtime=null;throw new Error('Device model could not load. Check available storage and your connection, or connect Gemini in Settings. '+e.message);});
  return loading;
 }
-function grammar(keys){
- const literal=JSON.stringify;
- const fields=keys.map(k=>literal(JSON.stringify(k))+ ' ws ":" ws value');
- return ['root ::= "{" ws '+fields.join(' ws "," ws ')+' ws "}"','ws ::= [ \\t\\n\\r]*','value ::= "\\"" char* "\\""','char ::= [^"\\\\\\x00-\\x1F] | "\\\\" (["\\\\/bfnrt] | "u" [0-9a-fA-F]{4})'].join('\n');
-}
 export async function generate(plan,progress,signal){
- const m=await engine(progress,signal);signal.throwIfAborted();progress('Reading the brief and brand context…');
- const context=JSON.parse(plan.prompt);
- const clean=o=>Object.fromEntries(Object.entries(o).filter(([,v])=>v!==null&&v!==''&&(!Array.isArray(v)||v.length)));
- const prompt=JSON.stringify(clean({...context,brand:clean(context.brand)}));
- const messages=[{role:'system',content:plan.system},{role:'user',content:prompt}];
- const formatted=await m.formatChat(messages,true);
- const tokens=await m.tokenize(formatted,true);if(tokens.length>4700)throw Error('This brief exceeds the device model context. Shorten the source or use Gemini.');
- const result=await m.createCompletion(formatted,{nPredict:Math.min(1350,6100-tokens.length),sampling:{temp:.52,top_p:.88,penalty_repeat:1.08,grammar:grammar(plan.keys)},abortSignal:signal,onNewToken:(_t,_p,s)=>{progress('Writing on device · '+s.length+' characters');}});
- try{return JSON.parse(result);}catch{throw Error('The device model did not finish the structured response. Try a shorter brief or Gemini.');}
+ const m=await engine(progress,signal),context=JSON.parse(plan.prompt),result={};
+ for(const [index,key] of plan.keys.entries()){
+  signal.throwIfAborted();
+  progress('Writing '+key+' · field '+(index+1)+' of '+plan.keys.length);
+  const prompt=await m.formatChat([{role:'system',content:plan.system.split('Return a JSON object')[0]+' Return only the requested field as plain text.'},{role:'user',content:JSON.stringify({context,previous:result,field:key})}],true);
+  const tokens=await m.tokenize(prompt,true);
+  if(tokens.length>5600)throw Error('This brief exceeds the device model context. Shorten it or use a hosted model.');
+  result[key]=(await m.createCompletion(prompt,{nPredict:Math.min(340,6000-tokens.length),sampling:{temp:.55,top_p:.9,penalty_repeat:1.1},abortSignal:signal})).trim();
+ }
+ return result;
 }

@@ -1,15 +1,16 @@
-async function api(request,env) {
+async function api(request,env,ctx) {
  const user=request.headers.get('oai-authenticated-user-id');
  if(!user)stop(401,'Sign in with ChatGPT to open your private workspace.');
  const db=env.DB;if(!db)stop(503,'The workspace database is unavailable.');
  if(request.method==='GET'){
   const brands=(await list(sql(db,'SELECT * FROM brands WHERE owner=? ORDER BY created',user))).map(brandRow);
   const pref=await sql(db,'SELECT model,sealed_key IS NOT NULL AS connected FROM preferences WHERE owner=?',user).first();
-  return {linkedinConfigured:linkedinReady(env),brands,formats,platforms,metricNames,connected:!!(pref?.connected||env.GEMINI_API_KEY),model:pref?.model||env.GEMINI_MODEL||'',personal:!!pref?.connected};
+  return {accounts:await agentAccounts(env,user),brands,formats,platforms,metricNames,connected:!!(pref?.connected||env.GEMINI_API_KEY),model:pref?.model||env.GEMINI_MODEL||'',personal:!!pref?.connected};
  }
  if(request.method!=='POST')stop(405,'Unsupported request method.');
  if(request.headers.get('origin')!==new URL(request.url).origin)stop(403,'Open the workspace on its own origin.');
  const v=await payload(request);const action=str(v.action,40,true);
+ if(action==='modelAccount')return agentAccountAction(env,user,v);
  if(action==='saveBrand'){
   const p=profile(v.profile);const id=v.brand||uid();
   if(v.brand){const r=await sql(db,'UPDATE brands SET profile=?,rev=rev+1 WHERE owner=? AND id=? AND rev=?',JSON.stringify(p),user,id,integer(v.rev,1,1e8)).run();if(!r.meta.changes)stop(409,'Brand changed or is no longer accessible. Refresh it.');}
@@ -24,19 +25,17 @@ async function api(request,env) {
  if(action==='disconnect'){await sql(db,'DELETE FROM preferences WHERE owner=?',user).run();return {ok:true};}
  const b=await brandBy(db,user,str(v.brand,64,true)),bid=b.id;
  if(action==='workspace'){
-  const kinds=['content','campaign','research','insight','document','activity','metric'];
+  const kinds=['content','campaign','research','insight','document','activity','metric','measurementReport'];
   const vals=await Promise.all(kinds.map(k=>rowsBy(db,user,bid,k,k==='activity'?30:k==='research'?20:1500)));
-  const conn=await sql(db,"SELECT data FROM records WHERE owner=? AND brand=? AND kind='connection' AND id='linkedin'",user,bid).first();const c=conn?JSON.parse(conn.data):null;
-  return {linkedin:c?{name:c.name,sub:c.sub,expires:c.expires}:null,brand:b,...Object.fromEntries(kinds.map((k,i)=>[k,vals[i]]))};
+  const recentRuns=await list(sql(db,"SELECT id,updated,json_extract(data,'$.objective') AS objective,json_extract(data,'$.state') AS state FROM records WHERE owner=? AND brand=? AND kind='run' ORDER BY updated DESC LIMIT 80",user,bid));
+  return {run:recentRuns,brand:b,...Object.fromEntries(kinds.map((k,i)=>[k,vals[i]]))};
  }
  if(action==='deleteBrand'){truth(v.confirm===b.name,'Type the brand name to confirm deletion.');await sql(db,'DELETE FROM brands WHERE owner=? AND id=? AND rev=?',user,bid,b.rev).run();return {ok:true};}
  const add=async(kind,data,message)=>{const id=uid();await db.batch([insert(db,user,bid,kind,data,id),activity(db,user,bid,message)]);return {id};};
- if(action==='linkedinBegin')return linkedinBegin(env,user,bid,new URL(request.url).origin);
- if(action==='linkedinPublish')return linkedinPublish(env,user,b,v);
- if(action==='linkedinDisconnect'){await sql(db,"DELETE FROM records WHERE owner=? AND brand=? AND id='linkedin' AND kind='connection'",user,bid).run();return {ok:true};}
+ if(action.startsWith('run'))return runAction(env,ctx,user,b,{...v,origin:new URL(request.url).origin});
  if(action==='document'){
   const name=str(v.name,140,true),text=str(v.text,30000,true);
-  truth(/\.(txt|md)$/i.test(name)&&!(/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(text)),'Upload a UTF-8 .txt or .md document.');
+  truth(/\.(txt|md|csv|pdf|docx)$/i.test(name)&&!(/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(text)),'Upload a supported reference containing readable text.');
   return add('document',{name,text},'Added '+name);
  }
  if(action==='removeDocument'){await recordBy(db,user,bid,v.id,'document');await sql(db,'DELETE FROM records WHERE owner=? AND brand=? AND id=? AND kind=?',user,bid,v.id,'document').run();return {ok:true};}
@@ -56,8 +55,9 @@ async function api(request,env) {
  if(action==='finish'){const job=await recordBy(db,user,bid,v.id,'job');truth(job.provider==='device','Invalid generation provider.');return finishJob(db,user,b,job,v.result,'Qwen2.5-0.5B-Instruct · device');}
  if(action==='saveInsight'){
   const old=await recordBy(db,user,bid,v.id,'insight');const result={};for(const k of guides[old.type].keys)result[k]=str(v.result[k],10000,true);
-  await update(db,user,bid,old.id,v.rev,{type:old.type,title:result.title,result,sources:old.sources,brief:old.brief,model:old.model},'Edited '+result.title);return {id:old.id};
+  await update(db,user,bid,old.id,v.rev,{approval:'Review',type:old.type,title:result.title,result,sources:old.sources,brief:old.brief,model:old.model},'Edited '+result.title);return {id:old.id};
  }
+ if(action==='reviewInsight'){const old=await recordBy(db,user,bid,v.id,'insight');const {id,rev,kind,updated,...data}=old;await update(db,user,bid,id,v.rev,{...data,approval:choice(v.decision,['Approved','Rejected'])},'Reviewed '+old.title);return {id};}
  if(action==='campaign'){
   const data={name:str(v.name,140,true),objective:str(v.objective,2000,true),start:properDate(v.start),end:properDate(v.end),status:choice(v.status,['Planning','Active','Complete'])};
   truth(data.start<=data.end,'End date must follow the start date.');
@@ -103,7 +103,8 @@ async function api(request,env) {
   truth(Array.isArray(v.rows)&&v.rows.length&&v.rows.length<=250,'Import 1–250 rows at a time.');
   const stmts=[],seen=new Set();for(const row of v.rows){
    const d={date:properDate(row.date),label:str(row.label,200,true),platform:choice(row.platform,platforms),campaign:str(row.campaign,140),metrics:{}};
-   for(const k of metricNames){if(row[k]===''||row[k]===null||row[k]===undefined)continue;const s=String(row[k]);truth(/^-?\d+$/.test(s),'Metrics must be whole numbers.');d.metrics[k]=integer(Number(s),k==='audience_growth'?-1e10:0,1e10);}
+   if(row.engagement===undefined&&row.engagements!==undefined)row.engagement=row.engagements;
+   for(const k of metricNames){if(row[k]===''||row[k]===null||row[k]===undefined)continue;const s=String(row[k]);if(['revenue','spend'].includes(k)){truth(/^\d{1,10}(?:\.\d{1,4})?$/.test(s),'Enter a nonnegative monetary amount in the same currency for all rows.');d.metrics[k]=Number(s);continue;}truth(/^-?\d+$/.test(s),'Metrics must be whole numbers.');d.metrics[k]=integer(Number(s),k==='audience_growth'?-1e10:0,1e10);}
    truth(Object.keys(d.metrics).length,'Each row requires a measured metric.');
    const key=JSON.stringify([d.date,d.platform,d.campaign,d.label]);truth(!seen.has(key),'Duplicate measurement key in this file.');seen.add(key);
    const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(key));const id='m-'+Array.from(new Uint8Array(hash),x=>x.toString(16).padStart(2,'0')).join('');

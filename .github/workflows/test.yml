@@ -10,6 +10,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - run: npm ci --ignore-scripts --omit=optional
       - run: npm run build
       - run: npm run validate
       - run: npm test

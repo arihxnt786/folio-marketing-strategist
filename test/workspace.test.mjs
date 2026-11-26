@@ -61,7 +61,7 @@ test('agent context, required fields, provider unavailability, measurements and 
  const job=(await go('start',brief)).data;
  assert.equal(JSON.parse(job.plan.prompt).original,brief.original);assert.ok(job.plan.system.includes('Preserve'));
  assert.equal((await go('finish',{id:job.id,result:{}})).status,422);
- assert.equal((await go('linkedinBegin')).status,412);
+ assert.equal((await go('linkedinBegin')).status,404);
  const measurement={date:'2026-11-26',label:'QA browser: Retrieve sources button',platform:'Web',campaign:'Acceptance testing',clicks:'1'};
  assert.equal((await go('metrics',{rows:[measurement]})).status,200);
  assert.equal((await go('metrics',{rows:[measurement]})).status,200);

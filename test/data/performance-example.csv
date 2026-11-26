@@ -1,0 +1,4 @@
+date,label,platform,campaign,impressions,engagement,clicks,leads,conversions,spend,revenue
+2026-11-01,Test data - workshop invitation,Instagram,Workshop,10000,500,200,25,10,100,400
+2026-11-02,Test data - follow-up,Email,Workshop,2000,60,100,15,5,50,200
+2026-11-03,Test data - unmeasured traffic,Web,Launch,,10,,,,0,

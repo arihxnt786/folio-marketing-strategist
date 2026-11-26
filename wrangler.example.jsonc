@@ -2,6 +2,7 @@
   "name": "folio-marketing-strategist",
   "main": "deploy/cloudflare.mjs",
   "compatibility_date": "2026-10-01",
+  "triggers":{"crons":["* * * * *"]},
   "build": {"command":"npm run build"},
   "d1_databases":[{"binding":"DB","database_name":"folio","database_id":"REPLACE_WITH_YOUR_D1_ID","migrations_dir":"drizzle"}],
   "vars":{"ACCESS_TEAM_URL":"https://YOUR-TEAM.cloudflareaccess.com","ACCESS_AUD":"REPLACE_WITH_YOUR_ACCESS_APPLICATION_AUDIENCE"}

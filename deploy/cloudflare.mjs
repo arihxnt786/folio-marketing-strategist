@@ -2,7 +2,7 @@
 import {createRemoteJWKSet,jwtVerify} from 'jose';
 import app from '../dist/server/index.js';
 let keySet,issuerInCache;
-export default {async fetch(req,env,ctx){
+export default {scheduled:app.scheduled,async fetch(req,env,ctx){
  const issuer=env.ACCESS_TEAM_URL,audience=env.ACCESS_AUD;
  if(!issuer||!/^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(issuer)||!audience)
   return new Response('Configure Cloudflare Access for this deployment.',{status:503});

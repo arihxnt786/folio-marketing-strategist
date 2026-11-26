@@ -1,40 +1,31 @@
-# Folio • AI social media marketing strategist
+# Folio 2.0
 
-A private, browser-based marketing workspace. Folio maintains separate brand records, gathers public research, runs task-specific generation workflows, and carries drafts through editing, scheduling, approval and reporting.
+Folio turns a marketing objective into a saved plan, research evidence, measured comparisons and reviewable campaign assets. The existing browser workspace, brand identities, approvals and D1 records are retained. Social accounts are never connected. A user records a publication link after posting independently.
 
-## Open the workspace
+## Use the workspace
 
-Open the private deployment link supplied with this repository and sign in with the owning ChatGPT account. Choose **Create brand**. Enter a name, target audience, marketing objective and preferred platforms. The workspace starts empty. A published private site and its preview have separate databases.
+1. Create a brand, add the audience and marketing objective, and choose its channels. Brand Workspace accepts selectable-text PDF, DOCX, text, Markdown and CSV references. Uploaded text is retained under the current brand.
+2. Open **Settings → Agent model connections** for cloud planning and composition. Select a provider, enter its key, load the catalog, select a text model with JSON support, and save. Catalog access and generation access can differ. Use the provider's billing controls. The application never displays a saved key.
+3. Open **Agent Workspace**, enter a business objective or choose an example, select an engine and start. **Research and calculations only** is available immediately. A general strategic brief needs an inference engine. For analytics, import your own data first.
+4. Inspect the task plan, dependency links, actual attempts, usage, cited sources and limitations. Pause or cancel at any checkpoint. Use **Recover stalled run** after an interruption. Reopening the workspace restores its saved history.
+5. Open each deliverable to edit or review it. Campaigns and drafts appear in their existing modules. Use Approve or Reject on insights and the Publishing queue for content. Download the run in Markdown, JSON, Word, or print to PDF. The calendar and metrics offer CSV exports.
 
-**Generate without an API key.** In Content Studio, enter a short creative brief, choose a destination format and select **On-device · Qwen 0.5B**. The browser downloads approximately 398 MB of model weights from Hugging Face on first use. It requires WebAssembly, sufficient memory and a stable connection. When persistent browser storage is limited, Folio uses a session-only download. Keep the tab open. Device speed and output quality vary. Review each draft's facts and suitability.
+## Try two different objectives
 
-**Use Gemini.** In Settings, enter your project key and optionally its model ID. Verify and connect checks the model catalogue and encrypts the key server-side. Select Gemini in the workflow. Google controls free availability, model access, quotas and regional terms. See [provider requirements](docs/INTEGRATIONS.md).
+**Current research:** “Research published evidence on sustainable fashion purchase intentions. Show the publication date and original source.” Open one numbered source and compare the excerpt with its original.
 
-## Operating workflows
+**Measured performance:** Import [the labelled example CSV](test/data/performance-example.csv) into a separate test brand. Start “Calculate CTR, CPC, CPL, CPA and ROAS from my uploaded campaign data.” The correct CTR is 2.5%, CPC is 0.50 in the input currency and ROAS is 4×. This run can finish without model calls.
 
-| Workspace | What you can do |
-| --- | --- |
-| Brand Workspace | Create, edit, switch and delete brands. Store positioning, competitors, voice, restrictions, preferred channels and reference material. Upload plain UTF-8 TXT or Markdown. Up to six recent reference excerpts enter each AI brief. |
-| Market Research | Search public Hacker News discussions, GDELT news and Crossref metadata. Inspect original links, available dates, retrieval time and per-provider failures. Request interpretation separately. No reach or search-volume estimates are generated. |
-| Audience Intelligence | Ask for audience segments, personas, objections, messaging and customer journeys. Analyze supplied competitor observations and relevant source evidence. Treat proposed segments and gaps as hypotheses. |
-| Content Studio | Generate or repurpose 16 formats covering the requested channels, with up to five variation directions. Review, edit, duplicate or refine into a new draft. Optional research refresh runs before generation. |
-| Campaign Planner | Create campaigns; generate an editable strategy, content pillars, channel recommendations and cadence. Generate dated draft briefs using campaign objectives, chosen formats, brand context and user-defined frequency. |
-| Content Calendar | Week and month views, channel/campaign filters, date/time editing, desktop drag-and-drop, duplication and filtered CSV export. Slot generation produces editorial briefs. Write or generate final copy before approval. Dates use the browser timezone for display and UTC in storage. |
-| Publishing | Preview exact copy, approve and export. Record manual publication using a permalink. An optional authorized LinkedIn member connector supports text posts. Manual confirmations and confirmed API publications have distinct labels. |
-| Analytics and Reports | Import platform measurements via a CSV template, including missing values. Compare rows and channel aggregates, filter by campaign, export raw measures, print to PDF, or request an AI report. |
+**Multi-deliverable campaign:** Connect a model, select an appropriate brand and use the Indian fitness, B2B SaaS or sustainable fashion example in the objective editor. A 30-day schedule at three posts a week produces editable slots. A draft per selected format is prepared when content was requested and passes review. Remaining slots carry editorial briefs.
 
-## Handover
+## Engineering handover
 
-- [Deployment and account setup](docs/DEPLOYMENT.md)
-- [Acceptance checks and a reproducible browser walkthrough](docs/TESTING.md)
-- [Security and tenancy](docs/SECURITY.md)
-- [Research providers and upstream evaluation](docs/RESEARCH.md)
-- [Publishing accounts and provider requirements](docs/INTEGRATIONS.md)
-- [Component licences](docs/THIRD-PARTY.md) and [original code licence](LICENSE)
-- [Actual browser screenshots](docs/screenshots/)
+- [Architecture, application contracts and execution states](docs/AGENT.md)
+- [Deployment, migrations and recovery](docs/DEPLOYMENT.md)
+- [Model choices, service requirements and costs](docs/MODELS.md)
+- [Research sources, provenance and coverage](docs/EVIDENCE.md)
+- [Security and operating boundaries](docs/SECURITY.md)
+- [Verification and scenario evaluation](docs/QA-2.md)
+- [Third-party software](docs/THIRD-PARTY.md) and [application license](LICENSE)
 
-## Source layout
-
-The Worker entry point is in worker/. server/ implements input validation, bound SQL access, retrieval, AI planning and validation, manual workflows and OAuth. client/ contains the responsive interface and device inference. drizzle/ contains the SQLite/D1 migration. scripts/build.mjs embeds first-party assets and pinned runtime files into one deployable ES module. The independent Cloudflare adapter in deploy/ verifies Access JWTs. test/ contains executable integration checks.
-
-For development with Node 24: run npm run build, npm test, and npm run dev. Local development uses a single disposable preview identity and a file-backed SQLite database. Normal hosted operation requires only a browser.
+Development uses Node 24, SQLite and the same Worker bundle as production. Run `npm ci --ignore-scripts --omit=optional`, `npm run build`, `npm run validate` and `npm test`. For a local single-user development instance, run `npm run dev`. The development identity must only be used on a trusted local preview. Production users only need a browser.
