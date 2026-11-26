@@ -1,0 +1,3 @@
+Enabled by default: device AI, public research, D1 workspace, manual approval and publishing receipts, imported CSV analytics.
+Optional: Gemini after key verification; LinkedIn public member text posts after app registration and brand-specific OAuth.
+Manual only: Instagram, Facebook Pages, YouTube, X, email and web. Direct account analytics are not connected.
