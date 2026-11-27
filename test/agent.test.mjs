@@ -102,3 +102,31 @@ test('brand copy cannot invent a free trial, discount or certification',async()=
  for(const text of ['Start a free trial','Get 20% off','Certified organic materials'])assert.throws(()=>verifyBrandOffers({body:text},profile),/unsupported/);
  assert.doesNotThrow(()=>verifyBrandOffers({cta:'Start a free trial'},{...profile,products:'Trial offer: free trial'}));
 });
+test('scheduled analysis uses measured data, respects opt-in and avoids replay duplicates',async()=>{
+ const {env,go}=await setup();
+ assert.equal((await go('analysisSchedule',{days:7})).status,412);
+ env.ANALYSIS_CRON='enabled';
+ await go('metrics',{rows:exampleRows()});await go('analysisSchedule',{days:7});
+ await env.DB.prepare("UPDATE records SET data=json_set(data,'$.next',0) WHERE kind='analysisSchedule'").run();
+ await drainAgentQueue(env);await drainAgentQueue(env);
+ const w=await go('workspace');assert.equal(w.measurementReport.length,1);assert.equal(w.measurementReport[0].overall.ctr.value,2.5);assert.equal(w.analysisSchedule[0].days,7);
+ await go('analysisSchedule',{days:0});assert.equal((await go('workspace')).analysisSchedule.length,0);env.DB.close();
+});
+test('explicit Instagram destination and daily cadence override default brand channels',async()=>{
+ const {go,env}=await setup();const {id}=await start(go,'Create a daily 7-day Instagram calendar');
+ const run=await progress(env,go,id);assert.equal(run.options.frequency,7);assert.deepEqual(run.options.formats,['Instagram caption']);
+ const out=await go('runExport',{id});assert.equal(out.deliverables.filter(x=>x.kind==='content'&&x.platform==='Instagram').length,7);env.DB.close();
+});
+
+test('reference revisions persist and reject stale or cross-brand writes',async()=>{
+ const {go,env}=await setup();
+ const {id}=await go('document',{name:'voice.md',text:'Use plain language.'});
+ const {document:[first]}=await go('workspace');
+ const edit={id,rev:first.rev,name:'voice.md',text:'Use plain English, with short examples.'};
+ assert.equal((await go('document',edit)).status,200);
+ assert.equal((await go('document',edit)).status,409);
+ const other=await post(env,{action:'saveBrand',profile:{...profile,name:'Other'}});
+ assert.equal((await go('document',{...edit,brand:other.id})).status,404);
+ assert.equal((await go('workspace')).document[0].text,edit.text);
+ env.DB.close();
+});

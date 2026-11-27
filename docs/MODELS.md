@@ -9,7 +9,7 @@ The server adapter accepts structured planning, drafting and review requests at 
 | `openrouter` | `OPENROUTER_API_KEY` | `OPENROUTER_MODEL` | Catalog discovery is public. Inference requires a key. Choose an explicitly free route when cost matters, then check availability and quota in the account. Compatibility is enforced on the requested response and token-limit parameters. [API overview](https://openrouter.ai/docs/api/reference/overview) · [Structured output](https://openrouter.ai/docs/guides/features/structured-outputs) |
 | `openai` | `OPENAI_API_KEY` | `OPENAI_MODEL` | Optional connection for an account with API access and available credit. Select a chat model that accepts a system message and JSON object mode. [Structured output and JSON mode](https://developers.openai.com/api/docs/guides/structured-outputs) |
 
-Configure only the provider you intend to use. Store keys in the hosting provider's server-side secret manager. Per-user configuration may also pass a decrypted `config.key` from authorized backend storage. Configure the model ID exactly as shown by the provider. No cross-provider fallback sends data to a second vendor. Enter public brand material when evaluating unpaid Gemini. Google specifies how it uses unpaid inputs and outputs and restricts use with confidential information. [Gemini terms](https://ai.google.dev/gemini-api/terms)
+Configure only the provider you intend to use. Store keys in the hosting provider's server-side secret manager. Per-user configuration may also pass a decrypted `config.key` from authorized backend storage. Configure the model ID exactly as shown by the provider. By default only the selected provider receives context. Selecting an optional fallback in the run controls explicitly authorizes that second provider to receive the same context on eligible failures. Enter public brand material when evaluating unpaid Gemini. Google specifies how it uses unpaid inputs and outputs and restricts use with confidential information. [Gemini terms](https://ai.google.dev/gemini-api/terms)
 
 ## Server interface
 
@@ -25,7 +25,7 @@ Each workflow can require a JSON Schema. Supported keywords are type, properties
 
 ## Verification
 
-`node --test test/models.test.mjs` tests local validation for accepted structures, invalid actions, unrecognized fields, bounds, unsafe configuration and missing inputs. The optional live test runs when `FOLIO_LIVE_MODEL_PROVIDER` names one of the four providers. Place the corresponding credential and model in the CI environment, then run the same command. It performs real catalog discovery and generation using a public bookstore brief. It can consume provider quota.
+`node --test test/models.test.mjs` tests local validation for accepted structures, invalid actions, unrecognized fields, bounds, unsafe configuration and missing inputs. The optional live test runs when `FOLIO_LIVE_MODEL_PROVIDER` names a supported provider. Place the corresponding credential and model in the CI environment, then run the same command. It performs real catalog discovery and generation using a public bookstore brief. It can consume provider quota.
 
 During development, the anonymous OpenRouter catalog returned 445 candidate text models. Google's live model-list endpoint rejected an invalid credential. No valid hosted model key was available for authenticated inference in that session. A catalog count is an observation at test time.
 

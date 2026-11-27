@@ -9,7 +9,7 @@ async function api(request,env,ctx) {
   const brands=(await list(sql(db,'SELECT * FROM brands WHERE owner=? ORDER BY created',user))).map(brandRow);
   const pref=await sql(db,'SELECT model,sealed_key IS NOT NULL AS connected FROM preferences WHERE owner=?',user).first();
   const personalSearch=await sql(db,"SELECT 1 AS present FROM model_accounts WHERE owner=? AND provider='tavily'",user).first();
-  return {searchConfigured:!!(personalSearch||env.TAVILY_API_KEY),personalSearch:!!personalSearch,trial:!!visitor,accounts:await agentAccounts(env,user),brands,formats,platforms,metricNames,connected:!!(pref?.connected||env.GEMINI_API_KEY),model:pref?.model||env.GEMINI_MODEL||'',personal:!!pref?.connected};
+  return {canSchedule:!visitor&&env.ANALYSIS_CRON==='enabled',searchConfigured:!!(personalSearch||env.TAVILY_API_KEY),personalSearch:!!personalSearch,trial:!!visitor,accounts:await agentAccounts(env,user),brands,formats,platforms,metricNames,connected:!!(pref?.connected||env.GEMINI_API_KEY),model:pref?.model||env.GEMINI_MODEL||'',personal:!!pref?.connected};
  }
  if(request.method!=='POST')stop(405,'Unsupported request method.');
  if(request.headers.get('origin')!==new URL(request.url).origin)stop(403,'Open the workspace on its own origin.');
@@ -48,17 +48,23 @@ async function api(request,env,ctx) {
  if(action==='disconnect'){await sql(db,'DELETE FROM preferences WHERE owner=?',user).run();return {ok:true};}
  const b=await brandBy(db,user,str(v.brand,64,true)),bid=b.id;
  if(action==='workspace'){
-  const kinds=['content','campaign','research','insight','document','activity','metric','measurementReport'];
+  const kinds=['content','campaign','research','insight','document','activity','metric','measurementReport','analysisSchedule'];
   const vals=await Promise.all(kinds.map(k=>rowsBy(db,user,bid,k,k==='activity'?30:k==='research'?20:1500)));
   const recentRuns=await list(sql(db,"SELECT id,updated,json_extract(data,'$.objective') AS objective,json_extract(data,'$.state') AS state FROM records WHERE owner=? AND brand=? AND kind='run' ORDER BY updated DESC LIMIT 80",user,bid));
   return {run:recentRuns,brand:b,...Object.fromEntries(kinds.map((k,i)=>[k,vals[i]]))};
  }
+ if(action==='analysisSchedule')return configureAnalysis(env,user,b,v);
  if(action==='deleteBrand'){truth(v.confirm===b.name,'Type the brand name to confirm deletion.');await sql(db,'DELETE FROM brands WHERE owner=? AND id=? AND rev=?',user,bid,b.rev).run();return {ok:true};}
  const add=async(kind,data,message)=>{const id=uid();await db.batch([insert(db,user,bid,kind,data,id),activity(db,user,bid,message)]);return {id};};
  if(action.startsWith('run'))return runAction(env,ctx,user,b,{...v,origin:new URL(request.url).origin});
  if(action==='document'){
   const name=str(v.name,140,true),text=str(v.text,30000,true);
   truth(/\.(txt|md|csv|pdf|docx)$/i.test(name)&&!(/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(text)),'Upload a supported reference containing readable text.');
+  if(v.id){
+   const existing=await recordBy(db,user,bid,v.id,'document');
+   await update(db,user,bid,existing.id,v.rev,{name,text},'Updated reference '+name);
+   return {id:existing.id};
+  }
   return add('document',{name,text},'Added '+name);
  }
  if(action==='removeDocument'){await recordBy(db,user,bid,v.id,'document');await sql(db,'DELETE FROM records WHERE owner=? AND brand=? AND id=? AND kind=?',user,bid,v.id,'document').run();return {ok:true};}

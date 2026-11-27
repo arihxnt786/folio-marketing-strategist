@@ -16,7 +16,7 @@ for (const [path, file, type] of [
   assets[path] = { body: await readFile(file, binary ? 'base64' : 'utf8'), type, binary };
 }
 assets['/ui.js'].body = (await readFile('client/files.js','utf8'))+'\n'+(await readFile('client/agent.js','utf8')) + '\n' + assets['/ui.js'].body;
-const files = ['server/common.mjs','server/providers.mjs','server/workflows.mjs','server/models.mjs','server/evidence.mjs','server/intelligence.mjs','server/agent.mjs','server/trial.mjs','server/api.mjs','worker/index.js'];
+const files = ['server/common.mjs','server/providers.mjs','server/workflows.mjs','server/models.mjs','server/evidence.mjs','server/intelligence.mjs','server/agent.mjs','server/schedules.mjs','server/trial.mjs','server/api.mjs','worker/index.js'];
 const code = await Promise.all(files.map(f=>readFile(f,'utf8')));
 await mkdir('dist/server',{recursive:true}); await mkdir('dist/.openai',{recursive:true});
 await writeFile('dist/server/index.js','const ASSETS = '+JSON.stringify(assets)+';\n'+code.join('\n'));

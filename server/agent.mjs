@@ -74,10 +74,16 @@ async function runAction(env,ctx,user,b,v){
   truth(!v.tools||(Array.isArray(v.tools)&&v.tools.length<=7),'Choose supported tools.');
   const requested=Array.isArray(v.formats)?v.formats:[];truth(requested.length<=5,'Select up to five formats.');
   const fmt=[...new Set(requested.map(f=>choice(f,Object.keys(formats))))];
-  if(!fmt.length)for(const p of b.platforms.slice(0,3))fmt.push(Object.keys(formats).find(f=>formats[f]===p));
+  if(!fmt.length){
+   const exact=Object.keys(formats).filter(f=>objective.toLowerCase().includes(f.toLowerCase()));
+   const mentioned=Object.values(formats).filter(p=>p!=='Web'&&new RegExp('\\b'+p+'\\b','i').test(objective));
+   const channels=[...new Set(mentioned.length?mentioned:b.platforms)].slice(0,5);
+   fmt.push(...exact.slice(0,5));
+   for(const channel of channels)if(fmt.length<5&&!fmt.some(f=>formats[f]===channel))fmt.push(Object.keys(formats).find(f=>formats[f]===channel));
+  }
   if(!fmt.length)fmt.push('Educational content');
   const missing=b.audience||provider==='evidence'?false:true;
-  const r={objective,created:now(),provider,fallback,model:account?.model||'',brandRev:b.rev,state:missing?'awaiting clarification':'pending',tasks:[],assumptions:[],events:[],outputs:[],limitations:missing?['Add a target audience in Brand Workspace, then resume.']:[],usage:{calls:0,inputTokens:0,outputTokens:0,unreported:0,chargedEstimate:null},reserved:0,lease:'',leaseUntil:0,iterations:0,options:{depth:choice(v.depth||'standard',['quick','standard','deep']),formats:fmt,days:integer(v.days??(Number(objective.match(/\b(\d{1,2})[ -]day/i)?.[1])||30),1,90),frequency:integer(v.frequency??3,1,7),start:properDate(v.start||now().slice(0,10)),maxCalls:integer(v.maxCalls??16,1,40),maxTokens:integer(v.maxTokens??100000,2000,500000),toolSelection:(v.tools||[]).map(t=>choice(t,agentTools)).slice(0,7)}};
+  const r={objective,created:now(),provider,fallback,model:account?.model||'',brandRev:b.rev,state:missing?'awaiting clarification':'pending',tasks:[],assumptions:[],events:[],outputs:[],limitations:missing?['Add a target audience in Brand Workspace, then resume.']:[],usage:{calls:0,inputTokens:0,outputTokens:0,unreported:0,chargedEstimate:null},reserved:0,lease:'',leaseUntil:0,iterations:0,options:{depth:choice(v.depth||'standard',['quick','standard','deep']),formats:fmt,days:integer(v.days??(Number(objective.match(/\b(\d{1,2})[ -]day/i)?.[1])||30),1,90),frequency:integer(v.frequency??(Number(objective.match(/\b([1-7]) (?:posts?|times|slots?) (?:a|per) week/i)?.[1])||(/\bdaily\b/i.test(objective)?7:3)),1,7),start:properDate(v.start||now().slice(0,10)),maxCalls:integer(v.maxCalls??16,1,40),maxTokens:integer(v.maxTokens??100000,2000,500000),toolSelection:(v.tools||[]).map(t=>choice(t,agentTools)).slice(0,7)}};
   await sql(db,'INSERT OR IGNORE INTO records(owner,brand,id,kind,data,updated) VALUES(?,?,?,?,?,?)',user,b.id,id,'run',JSON.stringify(r),now()).run();
   if(!missing)kickAgent(ctx,env,user,b.id,id,v.origin);
   return {id};
@@ -106,7 +112,12 @@ async function runAction(env,ctx,user,b,v){
  }
  stop(404,'Unknown run operation.');
 }
-function publicRun(r){const {lease,leaseUntil,kind,rev,...rest}=r;return rest;}
+function publicRun(r){
+ const {lease,leaseUntil,kind,rev,...rest}=r;
+ if(!finalStates.includes(r.state))return rest;
+ const completed=r.tasks.filter(t=>t.status==='done').length,failed=r.tasks.filter(t=>t.status==='failed').map(t=>t.id);
+ return {...rest,executiveSummary:[completed+' of '+r.tasks.length+' tasks finished. '+r.outputs.length+' deliverables saved.',...r.tasks.filter(t=>['analytics','research','calendar'].includes(t.tool)&&t.note).map(t=>t.note),...(failed.length?['Needs attention: '+failed.join(', ')+'.']:[])].join(' ')};
+}
 function runData(r){const {id,kind,updated,rev,...data}=r;return JSON.stringify(data);}
 async function saveRun(db,user,bid,r,writes=[]){
  // Every side effect has the same optimistic fence as the checkpoint. D1 batch is atomic.
@@ -145,6 +156,7 @@ async function acceptAgentPulse(request,env,ctx){
  kickAgent(ctx,env,user,bid,id,new URL(request.url).origin);return new Response(null,{status:202});}catch{return new Response(null,{status:403});}
 }
 export async function drainAgentQueue(env){
+ await runDueAnalyses(env);
  const queue=await list(env.DB.prepare("SELECT owner,brand,id FROM records WHERE kind='run' AND json_extract(data,'$.state') IN ('pending','planning','researching','executing','evaluating') AND COALESCE(json_extract(data,'$.leaseUntil'),0) <= ? ORDER BY updated LIMIT 8").bind(Date.now()));
  for(const j of queue)await agentStep(env,j.owner,j.brand,j.id);
 }
@@ -241,6 +253,7 @@ async function executeAgentTask(env,user,b,r,t){
  const result=await runInference(env,user,b,r,agentRules+' '+guide.task+' Provide concrete details specific to this objective and the requested format. Include measurable KPIs for strategy. For unsupported observations clearly state evidence is unavailable.',input,stringsSchema(keys),1800);
  const plan={type:t.tool,keys,format,sources};validated(plan,result,b);
  if(t.tool==='content')verifyBrandOffers(result,b,r.memory);
+ if(t.tool==='interpretation'&&sources.length&&!/\[S\d+\]/.test(result.observations))stop(422,'Connect each observation to a supplied source using its [S1] identifier.');
  t.draftModel=r.lastModel;
  if(t.tool==='content'&&earlier.some(x=>x.tool==='content'&&x.summary===JSON.stringify(result.title)))stop(422,'Repeated creative title. Produce a different angle.');
  if(t.tool==='content'&&/\b(carbon.neutral|zero environmental impact|100% sustainable)\b/i.test([result.hook,result.body,result.cta].join(' ')))stop(422,'Absolute environmental claim requires explicit substantiation. Use a qualified description.');
@@ -263,31 +276,51 @@ async function agentStep(env,user,bid,id){
  if(b.rev!==r.brandRev){r.state='paused';r.limitations.push('Brand profile changed. Review it and resume to use the new version.');await saveRun(db,user,bid,r);return false;}
  if(++r.iterations>80||Date.now()-Date.parse(r.created)>86400000){r.state='partially completed';r.limitations.push('Execution time or iteration limit reached.');await saveRun(db,user,bid,r);return false;}
  r.lease=uid();r.leaseUntil=Date.now()+120000;
- const task=r.tasks.find(t=>['pending','running','evaluating'].includes(t.status)&&t.deps.every(d=>['done','failed'].includes(r.tasks.find(x=>x.id===d)?.status)));
- const reviewing=!!task?.draft;
- r.state=!r.tasks.length?'planning':reviewing?'evaluating':task?.tool==='research'?'researching':'executing';
- if(task){task.status=reviewing?'evaluating':'running';if(!reviewing)task.attempts++;r.events.push({time:now(),message:(reviewing?'Reviewing ':'Executing ')+task.id});}
+ const ready=r.tasks.filter(t=>['pending','running','evaluating'].includes(t.status)&&t.deps.every(d=>['done','failed'].includes(r.tasks.find(x=>x.id===d)?.status)));
+ const first=ready[0],deterministic=['research','analytics'];
+ const batch=first&&deterministic.includes(first.tool)?ready.filter(t=>deterministic.includes(t.tool)).slice(0,2):ready.slice(0,1);
+ r.state=!r.tasks.length?'planning':first?.draft?'evaluating':first?.tool==='research'?'researching':'executing';
+ for(const t of batch){
+  t.status=t.draft?'evaluating':'running';
+  if(!t.draft)t.attempts++;
+  r.events.push({time:now(),message:(t.draft?'Reviewing ':'Executing ')+t.id});
+ }
  if(!await saveRun(db,user,bid,r))return false;
  let writes=[];
- try{
-  if(!r.tasks.length)await planAgent(env,user,b,r);
-  else if(task){
-   if(task.attempts>2)stop(422,'Retry limit reached after interrupted execution.');
-   writes=reviewing?await evaluateAgentTask(env,user,b,r,task):await executeAgentTask(env,user,b,r,task);
-   if(!task.draft){task.status='done';r.outputs.push(...writes.filter(w=>!w.id.includes('/slot-')).map(w=>({id:w.id,kind:w.kind,tool:task.tool,title:w.data.title||w.data.name||w.data.query,task:task.id})));r.events.push({time:now(),message:task.id+': '+(task.note||'Saved')});}
+ const errorMessage=e=>e instanceof Problem||e instanceof ModelProviderError?e.message:'An internal step failed. Its outputs were not committed.';
+ if(!r.tasks.length){
+  try{await planAgent(env,user,b,r);}catch(e){r.state='failed';r.limitations.push(errorMessage(e));}
+ }else{
+  const results=await Promise.allSettled(batch.map(async t=>{
+   if(t.attempts>2)stop(422,'Retry limit reached after interrupted execution.');
+   return t.draft?evaluateAgentTask(env,user,b,r,t):executeAgentTask(env,user,b,r,t);
+  }));
+  for(const [index,result] of results.entries()){
+   const t=batch[index];
+   if(result.status==='rejected'){
+    const e=result.reason,message=errorMessage(e);
+    if(t.attempts<2&&[422,429,502,503,504].includes(e.status)&&!['analytics','calendar'].includes(t.tool)){
+     t.status='pending';delete t.draft;t.feedback=message;r.events.push({time:now(),message:'Retry scheduled for '+t.id+': '+message});
+    }else{t.status='failed';delete t.draft;t.note=message;r.limitations.push(t.id+': '+message);}
+    continue;
+   }
+   writes.push(...result.value);
+   if(t.draft)continue;
+   t.status='done';
+   r.outputs.push(...result.value.filter(w=>!w.id.includes('/slot-')).map(w=>({id:w.id,kind:w.kind,tool:t.tool,title:w.data.title||w.data.name||w.data.query,task:t.id})));
+   r.events.push({time:now(),message:t.id+': '+(t.note||'Saved')});
+   if(t.tool==='research'&&r.provider!=='evidence'&&!t.degraded&&!r.tasks.some(x=>x.tool==='interpretation')){
+    r.tasks.splice(r.tasks.indexOf(t)+1,0,{id:'source-analysis',tool:'interpretation',deps:['research'],status:'pending',attempts:0});
+    for(const next of r.tasks.filter(x=>['strategy','competitor','audience','content'].includes(x.tool)&&x.status==='pending'))next.deps.push('source-analysis');
+    r.events.push({time:now(),message:'Evidence available. Added a cited synthesis before strategic recommendations.'});
+   }
   }
- }catch(e){
-  const message=e instanceof Problem||e instanceof ModelProviderError?e.message:'An internal step failed. Its outputs were not committed.';
-  if(!task){r.state='failed';r.limitations.push(message);}
-  else if(task.attempts<2&&[422,429,502,503,504].includes(e.status)&&!['analytics','calendar'].includes(task.tool)){
-   task.status='pending';delete task.draft;task.feedback=message;r.events.push({time:now(),message:'Retry scheduled for '+task.id+': '+message});
-  }else {task.status='failed';delete task.draft;task.note=message;r.limitations.push(task.id+': '+message);}
  }
  if(!finalStates.includes(r.state)){
   const pending=r.tasks.some(t=>!['done','failed'].includes(t.status));r.state=pending?'pending':r.tasks.some(t=>t.status==='failed'||t.degraded)?(r.outputs.length?'partially completed':'failed'):'completed';
  }
  r.lease='';r.leaseUntil=0;
- if((await brandBy(db,user,bid)).rev!==r.brandRev){r.state='paused';r.limitations.push('Brand changed during execution. Resume to recheck the step.');writes=[];if(task){r.outputs=r.outputs.filter(x=>x.task!==task.id);task.status='pending';delete task.draft;}}
+ if((await brandBy(db,user,bid)).rev!==r.brandRev){r.state='paused';r.limitations.push('Brand changed during execution. Resume to recheck the step.');writes=[];for(const t of batch){r.outputs=r.outputs.filter(x=>x.task!==t.id);t.status='pending';delete t.draft;}}
  if(!await saveRun(db,user,bid,r,writes))return false;
  return queueAlive(r);
 }

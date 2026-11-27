@@ -1,37 +1,44 @@
-✔ uploaded test CSV yields all seven independently expected ratios and missing-pair coverage (57.733276ms)
-✔ run survives a process restart and produces unique calendar slots after pause and replay (28.977135ms)
-✔ missing provider, missing measurements, isolation, cancelled work and scoped memory (21.844993ms)
-✔ mocked provider contract: planning, restricted copy rejection, revision, independent review and atomic draft save (33.405002ms)
-✔ planner restores business deliverables omitted by the model (6.298176ms)
-✔ signed browser trials scope records, reject provider setup and suppress host model keys (25.67306ms)
-✔ brand copy cannot invent a free trial, discount or certification (2.69745ms)
-✔ only attributable public links are retained and tracking parameters are removed (1.464678ms)
-✔ publication dates preserve supplied precision (0.248922ms)
-✔ source records distinguish text, metadata, discovery dates and stale publication dates (2.889683ms)
-✔ same URL deduplicates across queries while provenance survives (10.182092ms)
-✔ follow-up uses unused planned topics, broadens sparse results and terminates (0.47429ms)
-✔ empty topic returns a missing-input explanation and makes no provider request (1.332428ms)
-✔ live search retrieves genuine citations, tracks provider failures and enforces the search budget (7208.223881ms)
-✔ competitor extraction is restricted to HTTPS pages returned by the provider on declared competitor sites (1.29087ms)
-✔ web result dates preserve missing and partial dates, and parse RFC and ISO timestamps (0.785212ms)
-﹣ optional credentialed Tavily search returns genuine web excerpts (0.195668ms) # SKIP
-✔ workflow schema accepts a bounded named action and nullable confidence (5.697725ms)
-✔ workflow rejects unknown actions, extra and missing fields, bad types and out-of-bound values (2.964934ms)
-✔ unsupported schema keywords fail closed (1.104162ms)
-✔ provider configuration fails before network access for missing credentials or unknown providers (6.866921ms)
-✔ control characters, invalid paths, empty briefs and invalid token budgets are rejected (1.339004ms)
-✔ JSON root must be an object (0.366421ms)
-﹣ live discovery and genuine structured decision with provider-supplied usage (0.204603ms) # SKIP
-✔ provider request uses Worker-compatible manual redirects and rejects redirections (10.727922ms)
-✔ durable brand lifecycle, scoped reads and editing (63.716468ms)
-✔ campaign, calendar, revision control, preview approval and manual receipt (36.444196ms)
-✔ agent context, required fields, provider unavailability, measurements and import idempotency (22.270757ms)
-✔ CSV roundtrip preserves multiline text, missing measures and neutralizes formula cells (13.181289ms)
-ℹ tests 29
+
+> folio-marketing-strategist@2.0.0 test
+> node --test test/*.test.mjs
+
+✔ uploaded test CSV yields all seven independently expected ratios and missing-pair coverage (38.799804ms)
+✔ run survives a process restart and produces unique calendar slots after pause and replay (17.330094ms)
+✔ missing provider, missing measurements, isolation, cancelled work and scoped memory (15.375879ms)
+✔ mocked provider contract: planning, restricted copy rejection, revision, independent review and atomic draft save (29.150007ms)
+✔ planner restores business deliverables omitted by the model (5.237238ms)
+✔ signed browser trials scope records, reject provider setup and suppress host model keys (17.524133ms)
+✔ brand copy cannot invent a free trial, discount or certification (1.518137ms)
+✔ scheduled analysis uses measured data, respects opt-in and avoids replay duplicates (8.072412ms)
+✔ explicit Instagram destination and daily cadence override default brand channels (4.729903ms)
+✔ reference revisions persist and reject stale or cross-brand writes (5.444265ms)
+✔ only attributable public links are retained and tracking parameters are removed (2.335968ms)
+✔ publication dates preserve supplied precision (0.528761ms)
+✔ source records distinguish text, metadata, discovery dates and stale publication dates (3.375132ms)
+✔ same URL deduplicates across queries while provenance survives (12.778542ms)
+✔ follow-up uses unused planned topics, broadens sparse results and terminates (0.505422ms)
+✔ empty topic returns a missing-input explanation and makes no provider request (1.823394ms)
+﹣ live search retrieves genuine citations, tracks provider failures and enforces the search budget (0.172032ms) # SKIP
+✔ competitor extraction is restricted to HTTPS pages returned by the provider on declared competitor sites (1.051338ms)
+✔ web result dates preserve missing and partial dates, and parse RFC and ISO timestamps (0.86974ms)
+﹣ optional credentialed Tavily search returns genuine web excerpts (0.377577ms) # SKIP
+✔ workflow schema accepts a bounded named action and nullable confidence (3.522124ms)
+✔ workflow rejects unknown actions, extra and missing fields, bad types and out-of-bound values (1.91004ms)
+✔ unsupported schema keywords fail closed (0.552667ms)
+✔ provider configuration fails before network access for missing credentials or unknown providers (2.026936ms)
+✔ control characters, invalid paths, empty briefs and invalid token budgets are rejected (3.023849ms)
+✔ JSON root must be an object (0.33643ms)
+﹣ live discovery and genuine structured decision with provider-supplied usage (2.022758ms) # SKIP
+✔ provider request uses Worker-compatible manual redirects and rejects redirections (5.851599ms)
+✔ durable brand lifecycle, scoped reads and editing (24.655316ms)
+✔ campaign, calendar, revision control, preview approval and manual receipt (18.035928ms)
+✔ agent context, required fields, provider unavailability, measurements and import idempotency (11.666246ms)
+✔ CSV roundtrip preserves multiline text, missing measures and neutralizes formula cells (5.646097ms)
+ℹ tests 32
 ℹ suites 0
-ℹ pass 27
+ℹ pass 29
 ℹ fail 0
 ℹ cancelled 0
-ℹ skipped 2
+ℹ skipped 3
 ℹ todo 0
-ℹ duration_ms 9414.900767
+ℹ duration_ms 493.664998

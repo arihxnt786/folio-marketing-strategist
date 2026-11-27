@@ -1,0 +1,34 @@
+✔ only attributable public links are retained and tracking parameters are removed (1.569696ms)
+✔ publication dates preserve supplied precision (0.287595ms)
+✔ source records distinguish text, metadata, discovery dates and stale publication dates (3.141026ms)
+✔ same URL deduplicates across queries while provenance survives (11.152491ms)
+✔ follow-up uses unused planned topics, broadens sparse results and terminates (0.298449ms)
+✔ empty topic returns a missing-input explanation and makes no provider request (1.684007ms)
+✖ live search retrieves genuine citations, tracks provider failures and enforces the search budget (7014.502489ms)
+✔ competitor extraction is restricted to HTTPS pages returned by the provider on declared competitor sites (2.226109ms)
+✔ web result dates preserve missing and partial dates, and parse RFC and ISO timestamps (1.217487ms)
+﹣ optional credentialed Tavily search returns genuine web excerpts (0.27325ms) # SKIP
+ℹ tests 10
+ℹ suites 0
+ℹ pass 8
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 9833.052796
+
+✖ failing tests:
+
+test at test/evidence.test.mjs:47:1
+✖ live search retrieves genuine citations, tracks provider failures and enforces the search budget (7014.502489ms)
+  AssertionError [ERR_ASSERTION]: [{"name":"Crossref","query":"social media marketing","status":"unavailable","error":"The operation was aborted due to timeout"},{"name":"Hacker News","query":"social media marketing","status":"unavailable","error":"Connection unavailable or timed out."},{"name":"GDELT","query":"social media marketing","status":"unavailable","error":"Connection unavailable or timed out."}]
+      at TestContext.<anonymous> (file:///workspace/scratch/b7a9e5d2f295/folio/.sites-checkout/test/evidence.test.mjs:50:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

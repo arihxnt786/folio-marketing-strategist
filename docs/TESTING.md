@@ -1,6 +1,8 @@
 # Acceptance and browser walkthrough
 
-## Checks run on 26 November 2026
+For the objective-driven workspace, use the [2.0 scenarios and verification results](QA-2.md).
+
+## Original workspace checks on 26 November 2026
 
 The build and ES module export validation passed with Node 24. Four integration groups exercise the production Worker handler against a real SQLite database with foreign keys enabled. No AI responses or provider search results are mocked.
 
@@ -19,7 +21,7 @@ The build and ES module export validation passed with Node 24. Four integration 
 
 For a fresh development checkout use Node 24, then npm run build, npm run validate and npm test. Run node test/live.mjs to perform a real research call with current provider data; counts will change over time. Use npm run dev for the single-user local preview. None of these commands are needed to use a hosted deployment.
 
-## Test the private deployment in your browser
+## Test your brand workspace in a browser
 
 1. In Brand Workspace create a disposable profile named “Workshop acceptance”. Set products to “Saturday bicycle repair workshops”, audience to “First-time bicycle commuters”, objective to “Encourage workshop enquiries”, voice to “Practical and welcoming”, and select LinkedIn. Save. Edit its voice, reload and check the change.
 2. Add a second brand and switch between them. Upload a short TXT guideline to only one brand. Confirm the other brand has its own empty document list. Return to the workshop brand.
@@ -27,7 +29,7 @@ For a fresh development checkout use Node 24, then npm run build, npm run valida
 4. In Content Studio choose LinkedIn post. Enter “Invite first-time commuters to ask about our Saturday bicycle repair workshop. Keep it brief.” Choose On-device and Generate drafts. Allow the first download and generation to finish. Open the saved item, read the hook, body, CTA and visual direction, edit the body, save and refresh.
 5. Select Repurpose, choose Instagram caption, and paste “Our bicycle repair workshop meets on Saturdays. First-time commuters are welcome. Message us with a question before attending.” Request a concise caption. Compare the output to these actual source statements. Save editorial corrections.
 6. In Campaign Planner create “Workshop enquiries” with a one-week date range. Generate a calendar using two posts per week and one or more formats. In Calendar use both views, filter by campaign, open a slot, fill in copy and change its local time. Refresh, then export CSV and compare the stored schedule with its UTC timestamp.
-7. In Publishing preview that item, approve its current version, then download the approved copy. To test without sending anything externally, stop here. For a real campaign, publish manually in the intended account and record its actual permalink. Only use the optional LinkedIn public-send button when you intend to publish to the named member profile.
+7. In Publishing preview that item, approve its current version, then download the approved copy. To test without sending anything externally, stop here. For a real campaign, publish manually in the intended account and record its actual permalink.
 8. In Analytics download the blank CSV template. Copy a small set of measurements from your own platform export using ISO calendar dates and the displayed platform names. Leave absent counts empty. Import twice and verify the row count stays stable. Filter by campaign, export measured rows and compare them to the source file. Print / PDF uses the browser print dialog.
 9. To inspect AI failure handling without a secret, select unconnected Gemini and submit a brief. Check that the app explains setup and leaves previous drafts intact. A second authorized visitor in an independent Access deployment should see a separate workspace.
 

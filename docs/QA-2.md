@@ -32,3 +32,11 @@ For each brief capture the exact objective, model identifier, task graph, dated 
 The legacy workspace required several separate submissions for strategy and content. Folio 2.0 can prepare multiple deliverables from one objective. This is a behavioral comparison; no numerical uplift or model quality benchmark is claimed.
 
 The live SaaS rerun after the objective-coverage fix produced research, audience, competitor, strategy and content artifacts in 12 local-model calls (13,987 input and 2,412 output tokens reported). Reading the draft exposed an unsupported free-trial CTA. The subsequent release adds a deterministic check for undocumented offers, discounts and selected certifications. Its regression test rejects the free-trial phrase unless the brand supplied it. A human still needs to review product capabilities and broad marketing claims. The exact release test output is saved in [acceptance.txt](verification/acceptance.txt).
+
+## Published workspace observations on November 27, 2026
+
+An isolated test workspace on the public deployment was used for these checks. A genuine production run for “Research sustainable fashion purchase intentions” returned six dated Crossref sources with original links. GDELT timed out and its error was visible. This test exposed a provider request option unsupported by the hosted runtime. It passed after the Worker was corrected and redeployed. A separate run from the build environment timed out across all three providers, recorded in [the network test output](verification/provider-outage.txt). Availability depends on network and provider.
+
+The labelled performance CSV was uploaded through the production browser. The resulting run reported CTR 2.5%, conversion rate 5%, CPC 0.50, CPL 3.75, CPA 10 and ROAS 4×. Each ratio used two of three paired rows. The downloaded Word document passed ZIP integrity validation. Its document XML contained the same seven ratios, including engagement rate 4.6667%. Screenshots show the actual [research records](screenshots/production-research.jpg) and [measurements](screenshots/production-report.jpg).
+
+The default acceptance run omits the opt-in live evidence, credentialed Tavily, and genuine model checks. The scheduled-report tests use a local database and invoke the cron handler. A real hosting-provider Cron delivery requires a separate deployment.

@@ -1,0 +1,55 @@
+✔ uploaded test CSV yields all seven independently expected ratios and missing-pair coverage (65.697444ms)
+✔ run survives a process restart and produces unique calendar slots after pause and replay (29.043791ms)
+✔ missing provider, missing measurements, isolation, cancelled work and scoped memory (16.912875ms)
+✔ mocked provider contract: planning, restricted copy rejection, revision, independent review and atomic draft save (48.310248ms)
+✔ planner restores business deliverables omitted by the model (9.338168ms)
+✔ signed browser trials scope records, reject provider setup and suppress host model keys (21.121695ms)
+✔ brand copy cannot invent a free trial, discount or certification (1.32438ms)
+✔ scheduled analysis uses measured data, respects opt-in and avoids replay duplicates (7.740263ms)
+✔ explicit Instagram destination and daily cadence override default brand channels (9.601108ms)
+✔ only attributable public links are retained and tracking parameters are removed (2.907495ms)
+✔ publication dates preserve supplied precision (1.313324ms)
+✔ source records distinguish text, metadata, discovery dates and stale publication dates (5.118319ms)
+✔ same URL deduplicates across queries while provenance survives (14.213253ms)
+✔ follow-up uses unused planned topics, broadens sparse results and terminates (0.417415ms)
+✔ empty topic returns a missing-input explanation and makes no provider request (1.79897ms)
+✖ live search retrieves genuine citations, tracks provider failures and enforces the search budget (7021.308793ms)
+✔ competitor extraction is restricted to HTTPS pages returned by the provider on declared competitor sites (3.213461ms)
+✔ web result dates preserve missing and partial dates, and parse RFC and ISO timestamps (0.976733ms)
+﹣ optional credentialed Tavily search returns genuine web excerpts (0.243336ms) # SKIP
+✔ workflow schema accepts a bounded named action and nullable confidence (4.018715ms)
+✔ workflow rejects unknown actions, extra and missing fields, bad types and out-of-bound values (3.362547ms)
+✔ unsupported schema keywords fail closed (0.381481ms)
+✔ provider configuration fails before network access for missing credentials or unknown providers (2.215182ms)
+✔ control characters, invalid paths, empty briefs and invalid token budgets are rejected (6.229964ms)
+✔ JSON root must be an object (1.208966ms)
+﹣ live discovery and genuine structured decision with provider-supplied usage (0.450593ms) # SKIP
+✔ provider request uses Worker-compatible manual redirects and rejects redirections (4.787246ms)
+✔ durable brand lifecycle, scoped reads and editing (58.151452ms)
+✔ campaign, calendar, revision control, preview approval and manual receipt (36.665234ms)
+✔ agent context, required fields, provider unavailability, measurements and import idempotency (23.963352ms)
+✔ CSV roundtrip preserves multiline text, missing measures and neutralizes formula cells (9.491456ms)
+ℹ tests 31
+ℹ suites 0
+ℹ pass 28
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 2
+ℹ todo 0
+ℹ duration_ms 10302.199855
+
+✖ failing tests:
+
+test at test/evidence.test.mjs:47:1
+✖ live search retrieves genuine citations, tracks provider failures and enforces the search budget (7021.308793ms)
+  AssertionError [ERR_ASSERTION]: [{"name":"Crossref","query":"social media marketing","status":"unavailable","error":"Connection unavailable or timed out."},{"name":"Hacker News","query":"social media marketing","status":"unavailable","error":"Connection unavailable or timed out."},{"name":"GDELT","query":"social media marketing","status":"unavailable","error":"Connection unavailable or timed out."}]
+      at TestContext.<anonymous> (file:///workspace/scratch/b7a9e5d2f295/folio/.sites-checkout/test/evidence.test.mjs:50:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

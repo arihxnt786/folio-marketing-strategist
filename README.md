@@ -2,6 +2,8 @@
 
 Folio turns a marketing objective into a saved plan, research evidence, measured comparisons and reviewable campaign assets. The existing browser workspace, brand identities, approvals and D1 records are retained. Social accounts are never connected. A user records a publication link after posting independently.
 
+[Open the deployed Folio workspace](https://folio-marketing-workspace.lustrousoats2.chatgpt.site/)
+
 ## Use the workspace
 
 1. Create a brand, add the audience and marketing objective, and choose its channels. Brand Workspace accepts selectable-text PDF, DOCX, text, Markdown and CSV references. Uploaded text is retained under the current brand.

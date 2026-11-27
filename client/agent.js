@@ -23,7 +23,7 @@ function centralView(){
  field('objective','Business objective','','area',{required:true,wide:true,max:3000,hint:'Describe the outcome, audience and any constraints.'})+
  '<div class="formgrid"><label class="field">Intelligence engine<select name="provider">'+connections.map(x=>'<option value="'+E(x.provider)+'">'+E(x.provider+' · '+x.model)+'</option>').join('')+'<option value="evidence">Research and calculations only</option></select></label>'+field('depth','Research depth','standard','select',{values:['quick','standard','deep']})+'</div>'+
  (!connections.length?'<p class="hint">To generate strategy and copy, connect a model in '+nav('Settings','Settings')+'.</p>':'')+
- '<details><summary>Deliverables, scheduling and budgets</summary><label class="field">Optional fallback provider<select name="fallback"><option value="">None</option>'+connections.map(a=>'<option value="'+E(a.provider)+'">'+E(a.provider+' · '+a.model)+'</option>').join('')+'</select><small>Allow this provider to receive the same context if the selected provider is overloaded or rate-limited.</small></label><p class="hint">Leave tools unchecked for automatic selection. Formats specify the channels to prepare. Dates are UTC.</p><div class="checks">'+Object.entries(toolLabels).map(([k,l])=>'<label><input type="checkbox" name="tools" value="'+k+'">'+l+'</label>').join('')+'</div><h3>Content formats</h3><div class="checks">'+Object.keys(state.boot.formats).map(k=>'<label><input type="checkbox" name="formats" value="'+E(k)+'">'+E(k)+'</label>').join('')+'</div><div class="formgrid">'+field('start','Campaign start (UTC)',new Date().toISOString().slice(0,10),'date')+field('days','Duration in days','','number',{extra:'min="1" max="90"',hint:'Defaults to the objective’s day count, or 30.'})+field('frequency','Draft slots per week','3','number',{extra:'min="1" max="7"'})+field('maxCalls','Maximum model calls','16','number',{extra:'min="1" max="40"'})+field('maxTokens','Maximum token allowance','100000','number',{extra:'min="2000" max="500000"'})+'</div></details>'+
+ '<details><summary>Deliverables, scheduling and budgets</summary><label class="field">Optional fallback provider<select name="fallback"><option value="">None</option>'+connections.map(a=>'<option value="'+E(a.provider)+'">'+E(a.provider+' · '+a.model)+'</option>').join('')+'</select><small>Allow this provider to receive the same context if the selected provider is overloaded or rate-limited.</small></label><p class="hint">Leave tools unchecked for automatic selection. Formats specify the channels to prepare. Dates are UTC.</p><div class="checks">'+Object.entries(toolLabels).map(([k,l])=>'<label><input type="checkbox" name="tools" value="'+k+'">'+l+'</label>').join('')+'</div><h3>Content formats</h3><div class="checks">'+Object.keys(state.boot.formats).map(k=>'<label><input type="checkbox" name="formats" value="'+E(k)+'">'+E(k)+'</label>').join('')+'</div><div class="formgrid">'+field('start','Campaign start (UTC)',new Date().toISOString().slice(0,10),'date')+field('days','Duration in days','','number',{extra:'min="1" max="90"',hint:'Defaults to the objective’s day count, or 30.'})+field('frequency','Draft slots per week','','number',{extra:'min="1" max="7"'})+field('maxCalls','Maximum model calls','16','number',{extra:'min="1" max="40"'})+field('maxTokens','Maximum token allowance','100000','number',{extra:'min="2000" max="500000"'})+'</div></details>'+
  '<label class="field">Optional knowledge document<input type="file" name="knowledge" accept=".txt,.md,.csv,.pdf,.docx"></label>';
  return head()+card('Start an objective',form('centralRun',controls,'Start run'))+
  card('Execution monitor','<div id="run-monitor" aria-live="polite">'+empty('Open a run from history to see its tasks and results.')+'</div>')+
@@ -45,8 +45,8 @@ function drawMonitor(r){
  const list=items=>items.length?'<ul>'+items.map(x=>'<li>'+E(x)+'</li>').join('')+'</ul>':'';
  const ended=activeStates.includes(r.state)?Date.now():Date.parse(r.updated);
  const elapsed=Math.max(0,Math.floor((ended-Date.parse(r.created))/1000));
- target.innerHTML='<div class="row"><h3>'+E(r.objective)+'</h3>'+pill(r.state)+'</div><p>'+E(r.decision||'Waiting for a planning checkpoint.')+'</p><p class="hint">'+elapsed+' seconds elapsed · '+E(r.provider)+' · '+r.usage.calls+' model calls · '+r.usage.inputTokens+' reported input / '+r.usage.outputTokens+' reported output tokens · '+(r.usage.chargedEstimate==null?'cost unavailable':'reported cost $'+E(r.usage.chargedEstimate))+'</p><div class="actions">'+controls+button('run-md','Download report','',r.id)+button('run-docx','Download Word','',r.id)+button('run-json','Download JSON','',r.id)+button('run-print','Print / PDF','',r.id)+'</div>'+
- r.tasks.map(t=>'<div class="item"><div class="row"><strong>'+E(toolLabels[t.tool])+(t.tool==='content'?' · '+E(r.options.formats[Number(t.id.split('-')[1])]):'')+'</strong>'+pill(t.status)+'</div><small>'+E(t.deps.length?'Depends on '+t.deps.join(', '):'Independent task')+' · '+t.attempts+' execution attempts</small><p>'+E(t.note||t.feedback||'')+'</p></div>').join('')+
+ target.innerHTML='<div class="row"><h3>'+E(r.objective)+'</h3>'+pill(r.state)+'</div>'+(r.executiveSummary?'<h3>Executive summary</h3><p>'+E(r.executiveSummary)+'</p>':'')+'<p>'+E(r.decision||'Waiting for a planning checkpoint.')+'</p><p class="hint">'+elapsed+' seconds elapsed · '+E(r.provider)+' · '+r.usage.calls+' model calls · '+r.usage.inputTokens+' reported input / '+r.usage.outputTokens+' reported output tokens · '+(r.usage.chargedEstimate==null?'cost unavailable':'reported cost $'+E(r.usage.chargedEstimate))+'</p><div class="actions">'+controls+button('run-md','Download report','',r.id)+button('run-docx','Download Word','',r.id)+button('run-json','Download JSON','',r.id)+button('run-print','Print / PDF','',r.id)+'</div>'+
+ r.tasks.map(t=>'<div class="item"><div class="row"><strong>'+E(t.tool==='interpretation'?'Research synthesis':toolLabels[t.tool])+(t.tool==='content'?' · '+E(r.options.formats[Number(t.id.split('-')[1])]):'')+'</strong>'+pill(t.status)+'</div><small>'+E(t.deps.length?'Depends on '+t.deps.join(', '):'Independent task')+' · '+t.attempts+' execution attempts</small><p>'+E(t.note||t.feedback||'')+'</p></div>').join('')+
  (r.outputs.length?'<h3>Saved deliverables</h3>'+r.outputs.map(x=>'<div class="item row"><strong>'+E(x.title)+'</strong>'+button('result-'+x.kind,'Open','',x.id)+'</div>').join(''):'')+
  (r.assumptions.length?'<h3>Assumptions</h3>'+list(r.assumptions):'')+(r.limitations.length?'<h3>Limitations</h3>'+list(r.limitations):'')+
  (r.memory?.length?'<details><summary>Retrieved brand knowledge</summary>'+r.memory.map(m=>'<p><strong>'+E(m.label)+'</strong> · '+E(m.authority)+'<br>'+E(m.excerpt)+'</p>').join('')+'</details>':'')+
@@ -64,11 +64,12 @@ function drawAgent(){
  if(activeRun)loadMonitor(activeRun).catch(e=>{if($('#run-monitor'))$('#run-monitor').textContent=e.message;});
 }
 async function centralSubmit(name,v,f){
+ if(name==='analysisSchedule'){await call('analysisSchedule',{days:Number(v.days)});return true;}
  if(name==='researchAccount'){await call('researchAccount',{key:v.key});f.reset();return true;}
  if(name==='agentAccount'){await call('modelAccount',{mode:'save',provider:v.provider,model:v.model,key:v.key});f.reset();return true;}
  if(name!=='centralRun')return false;
  const data=new FormData(f);
- const options={objective:v.objective,provider:v.provider,fallback:v.fallback,depth:v.depth,start:v.start,frequency:+v.frequency,maxCalls:+v.maxCalls,maxTokens:+v.maxTokens,tools:data.getAll('tools'),formats:data.getAll('formats'),...(v.days?{days:+v.days}:{})};
+ const options={objective:v.objective,provider:v.provider,fallback:v.fallback,depth:v.depth,start:v.start,...(v.frequency?{frequency:+v.frequency}:{}),maxCalls:+v.maxCalls,maxTokens:+v.maxTokens,tools:data.getAll('tools'),formats:data.getAll('formats'),...(v.days?{days:+v.days}:{})};
  const file=f.elements.knowledge.files[0];const signature=JSON.stringify([state.b,options,file?.name,file?.size]);
  if(signature!==centralSignature){centralRequestId=crypto.randomUUID();centralSignature=signature;}
  if(file){await call('document',{name:file.name,text:await referenceText(file)});}
@@ -78,7 +79,7 @@ async function reportBundle(id){
  const r=await call('runExport',{id});return r;
 }
 function markdownReport(bundle){
- const lines=['# '+bundle.run.objective,'','Status · '+bundle.run.state,'','## Decision',bundle.run.decision||'','',...bundle.run.assumptions.map(s=>'- '+s),'','## Limitations',...bundle.run.limitations.map(s=>'- '+s)];
+ const lines=['# '+bundle.run.objective,'','Status · '+bundle.run.state,'','## Executive summary',bundle.run.executiveSummary||bundle.run.state,'','## Decision',bundle.run.decision||'','',...bundle.run.assumptions.map(s=>'- '+s),'','## Limitations',...bundle.run.limitations.map(s=>'- '+s)];
  for(const d of bundle.deliverables){lines.push('','## '+(d.title||d.name||d.query||d.kind));
   if(d.findings)for(const s of d.findings)lines.push('','['+s.id+'] '+s.title,s.url,s.excerpt||'', 'Published '+(s.date||'unknown')+' · retrieved '+s.retrieved);
   else if(d.overall)for(const [k,m] of Object.entries(d.overall))lines.push(k+' = '+(m.value??'unavailable')+' '+m.unit+' ('+m.numerator+' / '+m.denominator+', '+m.covered+'/'+m.total+' paired rows)');
@@ -125,3 +126,9 @@ setInterval(async()=>{
  const current=rows('run').find(x=>x.id===activeRun);if(!current||!activeStates.includes(current.state))return;
  runLoading=true;try{const bid=state.b,id=activeRun,r=await call('runGet',{id});if(bid!==state.b||id!==activeRun||state.page!=='Agent Workspace')return;Object.assign(current,{state:r.state,updated:r.updated});drawMonitor(r);drawHistory();}catch(e){if($('#run-monitor'))$('#run-monitor').textContent=e.message;}finally{runLoading=false;}
 },4000);
+
+function analysisScheduleView(){
+ if(!state.boot.canSchedule)return '';
+ const saved=rows('analysisSchedule')[0];
+ return card('Scheduled performance reports',form('analysisSchedule','<p>Compare measured rows when new uploads are available. Reports use no model calls.</p><label class="field">Report frequency<select name="days">'+[[0,'Off'],[1,'Daily'],[7,'Weekly'],[30,'Every 30 days']].map(([n,l])=>'<option value="'+n+'" '+(n===(saved?.days||0)?'selected':'')+'>'+l+'</option>').join('')+'</select></label>'+(saved?'<p>Next check · '+E(dateText(new Date(saved.next).toISOString()))+'</p>':''),'Save report schedule'));
+}

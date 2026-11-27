@@ -30,3 +30,7 @@ Use the database provider's D1 backup/export tools for a full restore, including
 ## Upgrading to 2.0
 
 The additive 0001 migration creates a per-owner provider configuration table and a queue index. It preserves existing identities, preferences, brand rows and content. Retain the previous deployed version and export D1 using the database provider before destructive migrations. Reverting the Worker can leave the additive objects in place. Never rotate the encryption secret without re-encrypting stored keys or asking users to reconnect. Standalone Workers should retain the Cron trigger from wrangler.example.jsonc. For a hosted local-inference service configure LOCAL_AI_BASE_URL and LOCAL_MODEL on the server. A loopback URL only works on the same machine as inference. For optional general web search set TAVILY_API_KEY.
+
+## Internal performance schedules
+
+On a standalone Worker, enable the Cron trigger and set ANALYSIS_CRON to enabled together. Signed-in Analytics and Reports then offers daily, seven-day and 30-day schedules per brand. At the next due check, changed measurements generate a report using the saved rows and their paired denominators. No model request or external publication is involved. The managed workspace supports on-demand reports. Repeat schedules require a provisioned Cron trigger.
