@@ -68,13 +68,15 @@ async function runAction(env,ctx,user,b,v){
   const active=await sql(db,"SELECT COUNT(*) AS n FROM records WHERE owner=? AND kind='run' AND json_extract(data,'$.state') IN ('pending','executing','planning','researching','evaluating')",user).first();
   if(active.n>=4)stop(429,'Finish, pause or cancel an active run first.');
   const account=provider==='evidence'?null:await agentConfig(env,user,provider);
+  const fallback=v.fallback&&v.fallback!==provider&&provider!=='evidence'?choice(v.fallback,agentProviders):'';
+  if(fallback)await agentConfig(env,user,fallback);
   truth(!v.tools||(Array.isArray(v.tools)&&v.tools.length<=7),'Choose supported tools.');
   const requested=Array.isArray(v.formats)?v.formats:[];truth(requested.length<=5,'Select up to five formats.');
   const fmt=[...new Set(requested.map(f=>choice(f,Object.keys(formats))))];
   if(!fmt.length)for(const p of b.platforms.slice(0,3))fmt.push(Object.keys(formats).find(f=>formats[f]===p));
   if(!fmt.length)fmt.push('Educational content');
   const missing=b.audience||provider==='evidence'?false:true;
-  const r={objective,created:now(),provider,model:account?.model||'',brandRev:b.rev,state:missing?'awaiting clarification':'pending',tasks:[],assumptions:[],events:[],outputs:[],limitations:missing?['Add a target audience in Brand Workspace, then resume.']:[],usage:{calls:0,inputTokens:0,outputTokens:0,unreported:0,chargedEstimate:null},reserved:0,lease:'',leaseUntil:0,iterations:0,options:{depth:choice(v.depth||'standard',['quick','standard','deep']),formats:fmt,days:integer(v.days??(Number(objective.match(/\b(\d{1,2})[ -]day/i)?.[1])||30),1,90),frequency:integer(v.frequency??3,1,7),start:properDate(v.start||now().slice(0,10)),maxCalls:integer(v.maxCalls??16,1,40),maxTokens:integer(v.maxTokens??100000,2000,500000),toolSelection:(v.tools||[]).map(t=>choice(t,agentTools)).slice(0,7)}};
+  const r={objective,created:now(),provider,fallback,model:account?.model||'',brandRev:b.rev,state:missing?'awaiting clarification':'pending',tasks:[],assumptions:[],events:[],outputs:[],limitations:missing?['Add a target audience in Brand Workspace, then resume.']:[],usage:{calls:0,inputTokens:0,outputTokens:0,unreported:0,chargedEstimate:null},reserved:0,lease:'',leaseUntil:0,iterations:0,options:{depth:choice(v.depth||'standard',['quick','standard','deep']),formats:fmt,days:integer(v.days??(Number(objective.match(/\b(\d{1,2})[ -]day/i)?.[1])||30),1,90),frequency:integer(v.frequency??3,1,7),start:properDate(v.start||now().slice(0,10)),maxCalls:integer(v.maxCalls??16,1,40),maxTokens:integer(v.maxTokens??100000,2000,500000),toolSelection:(v.tools||[]).map(t=>choice(t,agentTools)).slice(0,7)}};
   await sql(db,'INSERT OR IGNORE INTO records(owner,brand,id,kind,data,updated) VALUES(?,?,?,?,?,?)',user,b.id,id,'run',JSON.stringify(r),now()).run();
   if(!missing)kickAgent(ctx,env,user,b.id,id,v.origin);
   return {id};
@@ -147,17 +149,25 @@ export async function drainAgentQueue(env){
 }
 async function runInference(env,user,b,r,system,input,schema,cap){
  if(r.provider==='evidence')stop(412,'Connect a cloud model in Settings and start a new run for generated deliverables.');
- const size=new TextEncoder().encode(system+JSON.stringify(input)+JSON.stringify(schema)).length+cap+200;
- if(r.usage.calls>=r.options.maxCalls||r.reserved+size>r.options.maxTokens)stop(402,'The configured model budget has been reached. Saved work is available.');
- r.reserved+=size;r.usage.calls++;
- if(!await saveRun(env.DB,user,b.id,r))stop(409,'Run ownership changed.');
- const config=await agentConfig(env,user,r.provider);
- if(r.model&&config.model!==r.model)stop(412,'The selected model configuration changed. Create a new run with the new model.');
- const answer=await askModel({env,config,system,input,schema,maxTokens:cap,maxAttempts:1});
- r.usage.inputTokens+=answer.usage.inputTokens||0;r.usage.outputTokens+=answer.usage.outputTokens||0;
- if(answer.usage.totalTokens==null)r.usage.unreported++;else r.reserved+=Math.max(0,answer.usage.totalTokens)-size;
- if(Number.isFinite(answer.usage.costUsd))r.usage.chargedEstimate=(r.usage.chargedEstimate||0)+answer.usage.costUsd;
- return answer.value;
+ async function invoke(provider){
+  const config=await agentConfig(env,user,provider);
+  if(provider===r.provider&&r.model&&config.model!==r.model)stop(412,'Model configuration changed. Start a new run with the selected model.');
+  const size=new TextEncoder().encode(system+JSON.stringify(input)+JSON.stringify(schema)).length+cap+200;
+  if(r.usage.calls>=r.options.maxCalls||r.reserved+size>r.options.maxTokens)stop(402,'The configured model budget has been reached. Saved work is available.');
+  r.reserved+=size;r.usage.calls++;
+  if(!await saveRun(env.DB,user,b.id,r))stop(409,'Run ownership changed.');
+  const answer=await askModel({env,config,system,input,schema,maxTokens:cap,maxAttempts:1});
+  r.usage.inputTokens+=answer.usage.inputTokens||0;r.usage.outputTokens+=answer.usage.outputTokens||0;
+  if(answer.usage.totalTokens==null)r.usage.unreported++;else r.reserved+=answer.usage.totalTokens-size;
+  if(Number.isFinite(answer.usage.costUsd))r.usage.chargedEstimate=(r.usage.chargedEstimate||0)+answer.usage.costUsd;
+  r.lastModel=answer.provider+' / '+answer.model;
+  return answer.value;
+ }
+ try{return await invoke(r.provider);}catch(e){
+  if(!r.fallback||!['provider_rate_limit','provider_overloaded'].includes(e.code))throw e;
+  r.events.push({time:now(),message:'Provider unavailable. Using the selected alternate '+r.fallback+'.'});
+  return invoke(r.fallback);
+ }
 }
 const listOfText={type:'array',items:{type:'string'}};
 const planSchema={type:'object',properties:{tools:{type:'array',items:{type:'string',enum:agentTools}},assumptions:listOfText,queries:listOfText,reason:{type:'string'}},required:['tools','assumptions','queries','reason'],additionalProperties:false};
@@ -228,6 +238,8 @@ async function executeAgentTask(env,user,b,r,t){
  const input={objective:r.objective,brand:Object.fromEntries(brandFields.concat('platforms').map(k=>[k,b[k]])),assumptions:r.assumptions,format,knowledge:r.memory,knownLimitations:r.limitations,prior:earlier,sources,revision:t.feedback||''};
  const result=await runInference(env,user,b,r,agentRules+' '+guide.task+' Provide concrete details specific to this objective and the requested format. Include measurable KPIs for strategy. For unsupported observations clearly state evidence is unavailable.',input,stringsSchema(keys),1800);
  const plan={type:t.tool,keys,format,sources};validated(plan,result,b);
+ if(t.tool==='content')verifyBrandOffers(result,b,r.memory);
+ t.draftModel=r.lastModel;
  if(t.tool==='content'&&earlier.some(x=>x.tool==='content'&&x.summary===JSON.stringify(result.title)))stop(422,'Repeated creative title. Produce a different angle.');
  if(t.tool==='content'&&/\b(carbon.neutral|zero environmental impact|100% sustainable)\b/i.test([result.hook,result.body,result.cta].join(' ')))stop(422,'Absolute environmental claim requires explicit substantiation. Use a qualified description.');
  t.draft=result;t.status='evaluating';t.note='Structure, source identifiers and applicable copy rules checked.';return [];
@@ -237,11 +249,12 @@ async function evaluateAgentTask(env,user,b,r,t){
  const review=await runInference(env,user,b,r,agentRules+' Independently review this draft. Check the requested objective, factual support for cited claims, brand restrictions, originality, actionability, platform fit, and measurable KPIs for strategy. Return pass true only if usable. With pass false give concrete corrections. Missing evidence may be stated explicitly.',{objective:r.objective,tool:t.tool,knownLimitations:r.limitations,restrictions:b.restrictions,voice:b.voice,draft:t.draft,sources}, {type:'object',properties:{pass:{type:'boolean'},feedback:{type:'string'}},required:['pass','feedback'],additionalProperties:false},450);
  t.feedback=str(review.feedback,1800);if(!review.pass){delete t.draft;stop(422,t.feedback||'The model reviewer requested a revision.');}
  const id=recordKey(r,t),result=t.draft;delete t.draft;t.note=t.feedback||'Passed independent review.';
- const shared={model:r.model,sources,brief:r.objective};
+ const shared={model:t.draftModel||r.model,sources,brief:r.objective};
  if(t.tool==='content'){const format=r.options.formats[Number(t.id.split('-')[1])];return [{id,kind:'content',data:{...result,...shared,format,platform:formats[format],schedule:'',campaign:'',status:'Draft'}}];}
  return [{id,kind:'insight',data:{...shared,type:t.tool,title:result.title,result,approval:'Review'}}];
 }
 async function agentStep(env,user,bid,id){
+ if(user.startsWith(trialPrefix))env=trialEnv(env);
  const db=env.DB,r=await recordBy(db,user,bid,id,'run');
  if(!queueAlive(r)||r.leaseUntil>Date.now())return false;
  const b=await brandBy(db,user,bid);

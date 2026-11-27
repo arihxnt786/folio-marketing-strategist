@@ -85,3 +85,20 @@ test('planner restores business deliverables omitted by the model',async t=>{
  await drainAgentQueue(env);const r=await go('runGet',{id});
  assert.deepEqual(r.tasks.map(t=>t.tool),['research','audience','strategy','content']);env.DB.close();
 });
+test('signed browser trials scope records, reject provider setup and suppress host model keys',async()=>{
+ const env={DB:localDB(),KEY_ENCRYPTION_SECRET:Buffer.alloc(32,25).toString('base64'),OPENAI_MODEL:'host-model',OPENAI_API_KEY:'fixture'};
+ const session=await app.fetch(new Request(origin+'/trial',{method:'POST',headers:{origin}}),env);
+ assert.equal(session.status,200);const cookie=session.headers.get('set-cookie').split(';')[0];
+ const query=async(cookie,body)=>app.fetch(new Request(origin+'/api',{method:body?'POST':'GET',headers:{origin,cookie,'content-type':'application/json'},...(body?{body:JSON.stringify(body)}:{})}),env);
+ assert.deepEqual((await (await query(cookie)).json()).accounts,[]);
+ assert.ok((await (await query(cookie,{action:'saveBrand',profile})).json()).id);
+ assert.equal((await query(cookie,{action:'modelAccount',provider:'local',mode:'save'})).status,403);
+ const second=await app.fetch(new Request(origin+'/trial',{method:'POST',headers:{origin}}),env);
+ assert.equal((await (await query(second.headers.get('set-cookie').split(';')[0])).json()).brands.length,0);
+ assert.equal((await query(cookie.replace('demo','x')+'invalid')).status,401);env.DB.close();
+});
+test('brand copy cannot invent a free trial, discount or certification',async()=>{
+ const {verifyBrandOffers}=await import('../dist/server/index.js');
+ for(const text of ['Start a free trial','Get 20% off','Certified organic materials'])assert.throws(()=>verifyBrandOffers({body:text},profile),/unsupported/);
+ assert.doesNotThrow(()=>verifyBrandOffers({cta:'Start a free trial'},{...profile,products:'Trial offer: free trial'}));
+});

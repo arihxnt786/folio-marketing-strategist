@@ -1,7 +1,8 @@
 const baseHeaders={'x-content-type-options':'nosniff','referrer-policy':'no-referrer','cache-control':'private, no-store','permissions-policy':'camera=(), microphone=(), geolocation=()'};
 export default {async scheduled(event,env,ctx){ctx.waitUntil(drainAgentQueue(env));},async fetch(request,env,ctx){
  const path=new URL(request.url).pathname;
- if(path==='/health'&&request.method==='GET'){try{await env.DB.prepare('SELECT 1 FROM brands LIMIT 1').first();return Response.json({service:'Folio',database:'ready'},{headers:baseHeaders});}catch{return Response.json({service:'Folio',database:'unavailable'},{status:503,headers:baseHeaders});}}
+ if(path==='/health'&&request.method==='GET'){try{await env.DB.prepare('SELECT 1 FROM model_accounts LIMIT 1').first();return Response.json({service:'Folio',version:'2.0',database:'ready'},{headers:baseHeaders});}catch{return Response.json({service:'Folio',database:'unavailable'},{status:503,headers:baseHeaders});}}
+ if(path==='/trial'){try{return await createTrial(request,env);}catch(e){return Response.json({error:e instanceof Problem?e.message:'Test workspace could not be opened.'},{status:e.status||503,headers:baseHeaders});}}
  if(path==='/internal/advance'){try{return await acceptAgentPulse(request,env,ctx);}catch{return new Response(null,{status:400});}}
  if(path==='/api'){
   try{return Response.json(await api(request,env,ctx),{headers:baseHeaders});}

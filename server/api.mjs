@@ -1,15 +1,29 @@
 async function api(request,env,ctx) {
- const user=request.headers.get('oai-authenticated-user-id');
+ const authenticated=request.headers.get('oai-authenticated-user-id');
+ const visitor=authenticated?null:await trialIdentity(request,env);
+ const user=authenticated||visitor;
+ if(visitor)env=trialEnv(env);
  if(!user)stop(401,'Sign in with ChatGPT to open your private workspace.');
  const db=env.DB;if(!db)stop(503,'The workspace database is unavailable.');
  if(request.method==='GET'){
   const brands=(await list(sql(db,'SELECT * FROM brands WHERE owner=? ORDER BY created',user))).map(brandRow);
   const pref=await sql(db,'SELECT model,sealed_key IS NOT NULL AS connected FROM preferences WHERE owner=?',user).first();
-  return {accounts:await agentAccounts(env,user),brands,formats,platforms,metricNames,connected:!!(pref?.connected||env.GEMINI_API_KEY),model:pref?.model||env.GEMINI_MODEL||'',personal:!!pref?.connected};
+  return {trial:!!visitor,accounts:await agentAccounts(env,user),brands,formats,platforms,metricNames,connected:!!(pref?.connected||env.GEMINI_API_KEY),model:pref?.model||env.GEMINI_MODEL||'',personal:!!pref?.connected};
  }
  if(request.method!=='POST')stop(405,'Unsupported request method.');
  if(request.headers.get('origin')!==new URL(request.url).origin)stop(403,'Open the workspace on its own origin.');
  const v=await payload(request);const action=str(v.action,40,true);
+ if(visitor){
+  if(['modelAccount','connect'].includes(action))stop(403,'Sign in to connect a model to a permanent brand workspace.');
+  await limit(db,user,'test-requests',100);
+  if(action==='saveBrand'&&!v.brand){const count=await sql(db,'SELECT COUNT(*) AS n FROM brands WHERE owner=?',user).first();if(count.n>=2)stop(429,'A browser test workspace supports two brands.');}
+  if(['runStart','research','metrics','document','calendar','start'].includes(action)){
+   const use=await sql(db,'SELECT COUNT(*) AS n, COALESCE(SUM(length(data)),0) AS bytes FROM records WHERE owner=?',user).first();
+   if(use.n>=400||use.bytes>=750000)stop(429,'This test workspace has reached its storage allowance. Sign in for permanent work.');
+   if(action==='runStart')await limit(db,user,'test-runs',3);
+   if(action==='metrics')truth(Array.isArray(v.rows)&&v.rows.length<=100,'A test workspace supports 100 measurements per import.');
+  }
+ }
  if(action==='modelAccount')return agentAccountAction(env,user,v);
  if(action==='saveBrand'){
   const p=profile(v.profile);const id=v.brand||uid();

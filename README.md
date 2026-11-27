@@ -29,3 +29,5 @@ Folio turns a marketing objective into a saved plan, research evidence, measured
 - [Third-party software](docs/THIRD-PARTY.md) and [application license](LICENSE)
 
 Development uses Node 24, SQLite and the same Worker bundle as production. Run `npm ci --ignore-scripts --omit=optional`, `npm run build`, `npm run validate` and `npm test`. For a local single-user development instance, run `npm run dev`. The development identity must only be used on a trusted local preview. Production users only need a browser.
+
+**Trying Folio without signing in:** Choose **Try a test workspace** for a browser-specific seven-day workspace. Create a test brand and try public research or upload the labelled performance CSV. Sign in to create permanent brands and add a model connection. Test records stay separate from the signed-in workspace.

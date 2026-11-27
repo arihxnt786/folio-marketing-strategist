@@ -26,7 +26,7 @@ const values=f=>Object.fromEntries(new FormData(f));
 async function call(action,data={}){
  const res=await fetch('/api',action?{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action,brand:state.b,...data})}:{});
  let out;try{out=await res.json();}catch{throw Error('Workspace connection interrupted. Reload and sign in again.');}
- if(!res.ok)throw Error(out.error||'Workspace unavailable.');return out;
+ if(!res.ok){const err=Error(out.error||'Workspace unavailable.');err.status=res.status;throw err;}return out;
 }
 let sequence=0;
 async function refresh(boot=false){
@@ -42,7 +42,7 @@ function showError(t){modal('Action needs attention','<p class="errorbox">'+E(t)
 const sections=[['Workspace',['Agent Workspace',...names.slice(0,4)]],['Production',names.slice(4,9)]];
 function shell(){
  $('#rail').innerHTML='<div class="brandmark"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>Folio</div>'+button('menu','Close','menuclose quiet')+sections.map(([g,ns])=>'<div class="rail-label">'+g+'</div>'+ns.map(link).join('')).join('')+'<div class="railend">'+link('Settings')+'</div>';
- $('#top').innerHTML=button('menu',icon('menu')+' Menu','mobilemenu')+'<span class="crumb">Workspace &nbsp; / &nbsp; <strong>'+E(state.page)+'</strong></span><label><span class="skip">Selected brand</span><select class="workspace-select" id="brand-select">'+(state.boot?.brands.map(x=>'<option value="'+E(x.id)+'" '+(x.id===state.b?'selected':'')+'>'+E(x.name)+'</option>').join('')||'<option>No brand selected</option>')+'<option value="__new">＋ New brand</option></select></label>';
+ $('#top').innerHTML=(state.boot?.trial?'<a href="/signin-with-chatgpt?returnTo=%2F" target="_top" class="btn">Test workspace · Sign in</a>':'')+button('menu',icon('menu')+' Menu','mobilemenu')+'<span class="crumb">Workspace &nbsp; / &nbsp; <strong>'+E(state.page)+'</strong></span><label><span class="skip">Selected brand</span><select class="workspace-select" id="brand-select">'+(state.boot?.brands.map(x=>'<option value="'+E(x.id)+'" '+(x.id===state.b?'selected':'')+'>'+E(x.name)+'</option>').join('')||'<option>No brand selected</option>')+'<option value="__new">＋ New brand</option></select></label>';
 }
 function link(n){return '<a class="navlink '+(state.page===n?'active':'')+'" '+(state.page===n?'aria-current="page"':'')+' href="#'+encodeURIComponent(n)+'">'+icon(n)+E(n)+'</a>';}
 function contentList(items,more=true){return items.length?items.map(x=>'<div class="item row"><div><h3>'+E(x.title)+'</h3><small>'+E(x.platform)+' · '+E(dateText(x.schedule))+' · '+E(campaignName(x.campaign))+'</small></div><div class="actions">'+pill(x.status)+(more?button('editContent','Open','quiet',x.id):'')+'</div></div>').join(''):empty('No content in this view yet.');}
@@ -224,4 +224,12 @@ document.addEventListener('drop',async e=>{
  try{const time=localTime(x.schedule).slice(11)||'10:00';await call('saveContent',{id:x.id,rev:x.rev,item:{...x,status:x.status==='Approved'?'Review':x.status,schedule:new Date(day.dataset.day+'T'+time).toISOString()}});await refresh();toast('Schedule updated.');}catch(er){showError(er.message);}
 });
 function route(){let p;try{p=decodeURIComponent(location.hash.slice(1));}catch{}state.page=names.includes(p)?p:'Agent Workspace';$('#rail').classList.remove('open');if(dialog.open&&!state.busy)dialog.close();if(state.boot)render();window.scrollTo(0,0);}
-window.addEventListener('hashchange',route);document.documentElement.classList.toggle('dark',localStorage.getItem('folio.theme')==='dark');route();refresh(true).catch(e=>{main.innerHTML='<h1>Workspace unavailable</h1><p class="errorbox">'+E(e.message)+'</p><a class="btn" target="_top" href="/signin-with-chatgpt?returnTo=%2F">Sign in</a> <a class="btn" href="/">Retry</a>';});
+window.addEventListener('hashchange',route);document.documentElement.classList.toggle('dark',localStorage.getItem('folio.theme')==='dark');route();async function openWorkspace(){
+ try{await refresh(true);}catch(e){
+  if(e.status!==401){main.innerHTML='<h1>Workspace unavailable</h1><p class="errorbox">'+E(e.message)+'</p><a class="btn" href="/">Retry</a>';return;}
+  $('#rail').innerHTML='<div class="brandmark">Folio</div>';
+  main.innerHTML='<div class="head"><div><h1>Folio marketing workspace</h1><p>Research a market, prepare a campaign and review its sources from one objective.</p></div></div>'+card('Open your workspace','<p>Sign in with ChatGPT to access your brands and configure an AI model. You can also try research, calendars and performance analysis in an isolated seven-day test workspace on this browser.</p><div class="actions"><a class="btn primary" target="_top" href="/signin-with-chatgpt?returnTo=%2F">Sign in with ChatGPT</a><button type="button" id="try-workspace">Try a test workspace</button></div><p class="feedback" role="status"></p>');
+  $('#try-workspace').addEventListener('click',async event=>{event.target.disabled=true;try{const out=await fetch('/trial',{method:'POST'});if(!out.ok)throw Error((await out.json()).error);await refresh(true);}catch(err){main.querySelector('.feedback').textContent=err.message;event.target.disabled=false;}});
+ }
+}
+openWorkspace();

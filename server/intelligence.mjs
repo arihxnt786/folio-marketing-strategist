@@ -34,3 +34,11 @@ export async function retrieveMemory(db,user,brand,objective){
  }
  return chunks.sort((a,b)=>b.score-a.score).filter((v,i,a)=>a.findIndex(x=>x.excerpt===v.excerpt)===i).slice(0,6);
 }
+
+export function verifyBrandOffers(draft,brand,memory=[]){
+ const approved=[brand.products,brand.usp,brand.guidelines,...memory.filter(m=>m.kind==='document').map(m=>m.excerpt)].join(' ').normalize('NFKC').toLowerCase();
+ const copy=[draft.hook,draft.body,draft.cta].join(' ').normalize('NFKC').toLowerCase();
+ const offers=copy.match(/\bfree (?:trial|shipping|delivery|consultation|returns)|\bmoney.back guarantee|\blifetime warranty|\b(?:iso[- ]?\d{4,5}|certified organic|clinically proven)|(?:[$₹€£]\s?\d[\d,.]*|\d+(?:\.\d+)?% (?:off|discount))/g)||[];
+ const unsupported=offers.find(x=>!approved.includes(x));
+ if(unsupported)stop(422,'Remove the unsupported offer or claim “'+unsupported+'”. Use a CTA supported by this brand.');
+}

@@ -30,3 +30,5 @@ For each brief capture the exact objective, model identifier, task graph, dated 
 | Isolation | A separate identity or brand cannot read or control the first run. Model keys and private reasoning never appear in exports. |
 
 The legacy workspace required several separate submissions for strategy and content. Folio 2.0 can prepare multiple deliverables from one objective. This is a behavioral comparison; no numerical uplift or model quality benchmark is claimed.
+
+The live SaaS rerun after the objective-coverage fix produced research, audience, competitor, strategy and content artifacts in 12 local-model calls (13,987 input and 2,412 output tokens reported). Reading the draft exposed an unsupported free-trial CTA. The subsequent release adds a deterministic check for undocumented offers, discounts and selected certifications. Its regression test rejects the free-trial phrase unless the brand supplied it. A human still needs to review product capabilities and broad marketing claims. The exact release test output is saved in [acceptance.txt](verification/acceptance.txt).
