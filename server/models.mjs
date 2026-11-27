@@ -158,7 +158,7 @@ async function modelRequest(url, init, {catalog = false, attemptsLimit = 2, stre
   for (let attempts = 1; attempts <= attemptsLimit; attempts++) {
     let response;
     try {
-      response = await fetch(url, {...init, redirect:'error', signal:AbortSignal.timeout(timeout)});
+      response = await fetch(url, {...init, redirect:'manual', signal:AbortSignal.timeout(timeout)});
     } catch {
       // A POST may already have run; automatically repeating it could incur a second charge.
       if (catalog && attempts < attemptsLimit) continue;

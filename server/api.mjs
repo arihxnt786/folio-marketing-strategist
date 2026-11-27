@@ -8,13 +8,14 @@ async function api(request,env,ctx) {
  if(request.method==='GET'){
   const brands=(await list(sql(db,'SELECT * FROM brands WHERE owner=? ORDER BY created',user))).map(brandRow);
   const pref=await sql(db,'SELECT model,sealed_key IS NOT NULL AS connected FROM preferences WHERE owner=?',user).first();
-  return {trial:!!visitor,accounts:await agentAccounts(env,user),brands,formats,platforms,metricNames,connected:!!(pref?.connected||env.GEMINI_API_KEY),model:pref?.model||env.GEMINI_MODEL||'',personal:!!pref?.connected};
+  const personalSearch=await sql(db,"SELECT 1 AS present FROM model_accounts WHERE owner=? AND provider='tavily'",user).first();
+  return {searchConfigured:!!(personalSearch||env.TAVILY_API_KEY),personalSearch:!!personalSearch,trial:!!visitor,accounts:await agentAccounts(env,user),brands,formats,platforms,metricNames,connected:!!(pref?.connected||env.GEMINI_API_KEY),model:pref?.model||env.GEMINI_MODEL||'',personal:!!pref?.connected};
  }
  if(request.method!=='POST')stop(405,'Unsupported request method.');
  if(request.headers.get('origin')!==new URL(request.url).origin)stop(403,'Open the workspace on its own origin.');
  const v=await payload(request);const action=str(v.action,40,true);
  if(visitor){
-  if(['modelAccount','connect'].includes(action))stop(403,'Sign in to connect a model to a permanent brand workspace.');
+  if(['modelAccount','researchAccount','connect'].includes(action))stop(403,'Sign in to connect a model to a permanent brand workspace.');
   await limit(db,user,'test-requests',100);
   if(action==='saveBrand'&&!v.brand){const count=await sql(db,'SELECT COUNT(*) AS n FROM brands WHERE owner=?',user).first();if(count.n>=2)stop(429,'A browser test workspace supports two brands.');}
   if(['runStart','research','metrics','document','calendar','start'].includes(action)){
@@ -23,6 +24,14 @@ async function api(request,env,ctx) {
    if(action==='runStart')await limit(db,user,'test-runs',3);
    if(action==='metrics')truth(Array.isArray(v.rows)&&v.rows.length<=100,'A test workspace supports 100 measurements per import.');
   }
+ }
+ if(action==='researchAccount'){
+  if(v.mode==='remove'){await sql(db,"DELETE FROM model_accounts WHERE owner=? AND provider='tavily'",user).run();return {ok:true};}
+  await limit(db,user,'search-setup',4);const key=str(v.key,400,true);
+  try{const verified=await evidenceTavily('search',key,{query:'market research',search_depth:'basic',max_results:1});truth(Array.isArray(verified.results),'Invalid provider response.');}
+  catch{stop(422,'Tavily could not verify a basic search. Check the key, quota and provider availability.');}
+  await sql(db,"INSERT INTO model_accounts(owner,provider,model,sealed_key) VALUES(?,'tavily','search',?) ON CONFLICT(owner,provider) DO UPDATE SET sealed_key=excluded.sealed_key",user,await seal(env,user+'|tavily',key)).run();
+  return {ok:true};
  }
  if(action==='modelAccount')return agentAccountAction(env,user,v);
  if(action==='saveBrand'){

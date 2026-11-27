@@ -67,3 +67,12 @@ test('live discovery and genuine structured decision with provider-supplied usag
   assert.equal(result.provider,liveProvider);
   assert.ok(result.usage.totalTokens === null || result.usage.totalTokens > 0);
 });
+test('provider request uses Worker-compatible manual redirects and rejects redirections',async t=>{
+ let calls=0;
+ t.mock.method(globalThis,'fetch',async(_,options)=>{
+  calls++;assert.equal(options.redirect,'manual');
+  return new Response(null,{status:307,headers:{location:'https://different.example/'}});
+ });
+ await assert.rejects(askModel({config:{provider:'openai',key:'fixture',model:'gpt-test'},system:'Return JSON.',input:'Check.'}),errorCode('provider_error'));
+ assert.equal(calls,1);
+});

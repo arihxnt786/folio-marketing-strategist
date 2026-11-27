@@ -11,7 +11,8 @@ const scenarios={
 let centralRequestId=null, centralSignature='', activeRun=null, runLoading=false;
 function agentSettings(){
  if(state.boot.trial)return card('Permanent model connections','<p>Sign in to save provider keys and permanent brands. Your temporary workspace supports public research and uploaded measurements.</p>');
- return card('Agent model connections',(state.boot.accounts||[]).map(a=>'<div class="item row"><div><strong>'+E(a.provider)+'</strong> · '+E(a.model)+'</div>'+(!a.hosted&&!a.legacy?button('dropProvider','Disconnect','quiet',a.provider):'')+'</div>').join('')+
+ const research=card('General web search','<p>'+E(state.boot.searchConfigured?'Tavily is configured.':'Public indexes are available. Connect Tavily to add general web results and competitor website excerpts.')+'</p>'+form('researchAccount',field('key','Tavily API key','','password',{required:true,extra:'autocomplete="off"',hint:'Verification uses one basic search against the provider quota.'}),'Verify and save search key')+(state.boot.personalSearch?button('dropSearch','Disconnect search key','quiet'):''));
+ return research+card('Agent model connections',(state.boot.accounts||[]).map(a=>'<div class="item row"><div><strong>'+E(a.provider)+'</strong> · '+E(a.model)+'</div>'+(!a.hosted&&!a.legacy?button('dropProvider','Disconnect','quiet',a.provider):'')+'</div>').join('')+
  '<p>Choose a provider you have access to. Load its current models, then save your choice. The selected provider receives the objective and relevant brand evidence. Its quota and pricing apply.</p>'+
  form('agentAccount','<div class="formgrid">'+field('provider','Provider','gemini','select',{values:['gemini','openai','groq','openrouter']})+field('key','Provider API key','','password',{required:true,extra:'autocomplete="off"'})+'<label class="field wide">Model<select name="model" required><option value="">Load models with your key first</option></select></label></div>'+button('loadModels','Load available models'),'Save model connection')+
  '<p class="hint">Public research and measured calculations work without a model. Strategy, content and independent review require a connected cloud model.</p>');
@@ -54,7 +55,8 @@ function drawMonitor(r){
 async function loadMonitor(id){
  const bid=state.b;const r=await call('runGet',{id,brand:bid});
  if(bid!==state.b||state.page!=='Agent Workspace'||activeRun!==id)return;
- drawMonitor(r);
+ const entry=rows('run').find(x=>x.id===id);if(entry){entry.state=r.state;entry.updated=r.updated;}
+ drawMonitor(r);drawHistory();
 }
 function drawAgent(){
  drawHistory();
@@ -62,6 +64,7 @@ function drawAgent(){
  if(activeRun)loadMonitor(activeRun).catch(e=>{if($('#run-monitor'))$('#run-monitor').textContent=e.message;});
 }
 async function centralSubmit(name,v,f){
+ if(name==='researchAccount'){await call('researchAccount',{key:v.key});f.reset();return true;}
  if(name==='agentAccount'){await call('modelAccount',{mode:'save',provider:v.provider,model:v.model,key:v.key});f.reset();return true;}
  if(name!=='centralRun')return false;
  const data=new FormData(f);
@@ -89,6 +92,7 @@ async function centralAction(a,id){
   const f=$('form[data-form="agentAccount"]'),v=values(f);if(!v.key)throw Error('Enter your provider key first.');
   const el=f.querySelector('[data-act="loadModels"]');el.disabled=true;try{const result=await call('modelAccount',{mode:'list',provider:v.provider,key:v.key});f.elements.model.innerHTML=opt(result.models,'');f.querySelector('.feedback').textContent=result.models.length+' available models.';}finally{el.disabled=false;}return true;
  }
+ if(a==='dropSearch'){await call('researchAccount',{mode:'remove'});await refresh(true);return true;}
  if(a==='dropProvider'){await call('modelAccount',{mode:'remove',provider:id});await refresh(true);return true;}
  if(a==='acceptInsight'||a==='rejectInsight'){const x=item('insight',id);await call('reviewInsight',{id,rev:x.rev,decision:a==='acceptInsight'?'Approved':'Rejected'});await refresh();return true;}
  if(a==='openRun'){activeRun=id;await loadMonitor(id);$('#run-monitor')?.scrollIntoView();return true;}

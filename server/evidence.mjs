@@ -63,7 +63,7 @@ async function evidenceJSON(url, timeout = 7000, init = {}) {
   for (let attempt = 0; attempt < 2; attempt++) {
     let response;
     try {
-      response = await fetch(url, {...init,headers:{accept:'application/json',...init.headers},redirect:'error',
+      response = await fetch(url, {...init,headers:{accept:'application/json',...init.headers},redirect:'manual',
         signal:AbortSignal.timeout(Math.max(1, deadline - Date.now()))});
     } catch {
       throw new Error('Connection unavailable or timed out.');

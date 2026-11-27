@@ -55,3 +55,5 @@ To allow additional page extraction, set the optional server variable `TAVILY_EX
 Tavily credentials were unavailable in the development environment. Domain restrictions, deduplication and date parsing were exercised locally. Live authenticated Tavily Search and Extract remain unverified. With an authorized key in the environment, the live test additionally searches REI's website for bicycle repair classes and checks for an actual sourced excerpt. This test performs a single Tavily Search request; it does not publish or start an extraction.
 
 Optional general-web access uses Tavily when TAVILY_API_KEY is configured. Basic search requests bounded source snippets. Deep competitor research may use extract for up to two search-returned HTTPS pages on declared competitor domains. No visitor-supplied URL is fetched directly by the Worker. Coverage and charges depend on the provider account and terms. When the service is unavailable, its absence is visible in the evidence packet.
+
+Signed-in users can also connect their own Tavily key in Settings → General web search. Verification uses one basic search. The stored credential is encrypted and scoped to its owner.
